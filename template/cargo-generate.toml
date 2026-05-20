@@ -1,0 +1,9 @@
+[template]
+cargo_generate_version = ">=0.21"
+exclude = ["**/target/**", "**/Cargo.lock"]
+
+[placeholders.prover_mode]
+type = "string"
+prompt = "Prover arithmetic mode (`ct` = constant-time, safe for private witnesses; `public` = variable-time table-math, faster but leaks timing — public data only)"
+choices = ["ct", "public"]
+default = "ct"
