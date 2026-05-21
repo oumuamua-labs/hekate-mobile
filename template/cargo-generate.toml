@@ -1,6 +1,12 @@
 [template]
 cargo_generate_version = ">=0.21"
-exclude = ["**/target/**", "**/Cargo.lock"]
+exclude = [
+    "**/target/**",
+    "**/Cargo.lock",
+    "android/gradle/wrapper/gradle-wrapper.jar",
+    "android/gradlew",
+    "android/gradlew.bat",
+]
 
 [placeholders.prover_mode]
 type = "string"

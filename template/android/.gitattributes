@@ -1,0 +1,6 @@
+# Gradle wrapper, line endings are platform-prescribed.
+# gradlew must stay LF or POSIX shells reject it.
+# gradlew.bat must stay CRLF or cmd.exe mis-tokenizes it.
+gradlew                          text eol=lf
+gradlew.bat                      text eol=crlf
+gradle/wrapper/gradle-wrapper.jar binary
