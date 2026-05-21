@@ -4,6 +4,7 @@
 use clap::{Parser, Subcommand};
 use std::process::ExitCode;
 
+mod android_build;
 mod doctor;
 mod ios_build;
 
@@ -18,7 +19,12 @@ struct Cli {
 enum Command {
     /// Verify host-machine prerequisites
     /// for iOS and Android builds.
-    Doctor,
+    Doctor {
+        /// Scope checks to a single platform.
+        /// Omit to inspect both.
+        #[arg(value_enum)]
+        platform: Option<doctor::Platform>,
+    },
 
     /// Cross-compile, wrap frameworks, generate
     /// Swift bindings, and assemble xcframeworks
@@ -29,12 +35,19 @@ enum Command {
         #[arg(long)]
         unsigned: bool,
     },
+
+    /// Cross-compile via cargo-ndk, generate
+    /// Kotlin bindings, bundle the prover cdylib
+    /// into jniLibs, and assemble an .aar via
+    /// gradle.
+    AndroidBuild,
 }
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
     match cli.command {
-        Command::Doctor => doctor::run(),
+        Command::Doctor { platform } => doctor::run(platform),
         Command::IosBuild { unsigned } => ios_build::run(unsigned),
+        Command::AndroidBuild => android_build::run(),
     }
 }
