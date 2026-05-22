@@ -20,13 +20,15 @@ import kotlin.test.assertTrue
 
 class TestToken : CancelToken {
     private val flag = AtomicBoolean(false)
-    
+
     val requested: Boolean get() = flag.get()
-    
+
     override fun request() {
         flag.set(true)
     }
 }
+
+class Boom : RuntimeException("boom")
 
 class HekateProverTest {
     @Test
@@ -41,8 +43,6 @@ class HekateProverTest {
 
     @Test
     fun sync_prove_error_surfaces_on_async_path() = runBlocking {
-        class Boom : RuntimeException("boom")
-
         val prover = object : HekateProver<Unit, Unit, TestToken> {
             override fun makeCancelToken() = TestToken()
             override fun prove(inputs: Unit, cancel: TestToken): Unit = throw Boom()
