@@ -1,0 +1,198 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Mobile Determinism
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/mobile_determinism/**'
+      - '.github/workflows/determinism.yml'
+      - 'template/Cargo.toml'
+  pull_request:
+    paths:
+      - 'tests/mobile_determinism/**'
+      - '.github/workflows/determinism.yml'
+      - 'template/Cargo.toml'
+
+env:
+  CARGO_TERM_COLOR: always
+  HARNESS_DIR: tests/mobile_determinism
+  PROOF_FILENAME: proof_bytes.bin
+
+jobs:
+  sync-check:
+    name: hekate-prover-sys pin sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify template ↔ harness pin match
+        run: |
+          set -euo pipefail
+          extract() {
+            sed -nE 's/.*hekate-prover-sys.*version[[:space:]]*=[[:space:]]*"=?([0-9]+\.[0-9]+\.[0-9]+)".*/\1/p' "$1"
+          }
+          T=$(extract template/Cargo.toml)
+          H=$(extract tests/mobile_determinism/Cargo.toml)
+          echo "template/Cargo.toml:                  $T"
+          echo "tests/mobile_determinism/Cargo.toml:  $H"
+          if [ -z "$T" ] || [ -z "$H" ]; then
+            echo "::error::could not extract hekate-prover-sys version from one of the manifests"
+            exit 1
+          fi
+          if [ "$T" != "$H" ]; then
+            echo "::error::hekate-prover-sys pin mismatch: template=$T vs harness=$H — sync them before running determinism CI"
+            exit 1
+          fi
+          echo "OK: both pinned to $T"
+
+  ios-sim:
+    name: iOS arm64 simulator
+    needs: [sync-check]
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios-sim
+
+      - name: Build harness for iOS simulator
+        working-directory: ${{ env.HARNESS_DIR }}
+        run: cargo build --release --target aarch64-apple-ios-sim --bin determinism-harness
+
+      - name: Stage binary + prover cdylib with rewritten install names
+        working-directory: ${{ env.HARNESS_DIR }}
+        run: |
+          set -euxo pipefail
+          BIN=target/aarch64-apple-ios-sim/release/determinism-harness
+          CDYLIB=$(find target/aarch64-apple-ios-sim/release/build -name 'libhekate_prover_cdylib.dylib' | head -1)
+          STAGE=stage-ios
+          rm -rf "$STAGE" && mkdir -p "$STAGE"
+          cp "$BIN" "$STAGE/"
+          cp "$CDYLIB" "$STAGE/"
+          OLD_REF=$(otool -L "$STAGE/determinism-harness" | grep libhekate_prover_cdylib | awk '{print $1}')
+          install_name_tool -change "$OLD_REF" "@executable_path/libhekate_prover_cdylib.dylib" "$STAGE/determinism-harness"
+          install_name_tool -id   "@executable_path/libhekate_prover_cdylib.dylib" "$STAGE/libhekate_prover_cdylib.dylib"
+          codesign -s - "$STAGE/libhekate_prover_cdylib.dylib"
+          codesign -s - "$STAGE/determinism-harness"
+
+      - name: Boot iOS simulator
+        run: |
+          UDID=$(xcrun simctl create harness-device com.apple.CoreSimulator.SimDeviceType.iPhone-15)
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Run harness in simulator
+        working-directory: ${{ env.HARNESS_DIR }}
+        run: |
+          set -euxo pipefail
+          STAGE=$(pwd)/stage-ios
+          OUT_HOST=$(pwd)/${{ env.PROOF_FILENAME }}
+          xcrun simctl spawn "$SIM_UDID" "$STAGE/determinism-harness" "$OUT_HOST"
+          test -s "$OUT_HOST"
+          shasum -a 256 "$OUT_HOST"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-proof
+          path: ${{ env.HARNESS_DIR }}/${{ env.PROOF_FILENAME }}
+          if-no-files-found: error
+
+  android-emu:
+    name: Android arm64 emulator
+    needs: [sync-check]
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
+      - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 11076708
+
+      - name: Install NDK
+        run: |
+          yes | sdkmanager --install "ndk;26.1.10909125"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> "$GITHUB_ENV"
+
+      - name: Build harness for Android arm64
+        working-directory: ${{ env.HARNESS_DIR }}
+        run: cargo ndk -t arm64-v8a build --release --bin determinism-harness
+
+      - name: Stage binary + prover cdylib
+        working-directory: ${{ env.HARNESS_DIR }}
+        run: |
+          set -euxo pipefail
+          BIN=target/aarch64-linux-android/release/determinism-harness
+          CDYLIB=$(find target/aarch64-linux-android/release/build -name 'libhekate_prover_cdylib.so' | head -1)
+          STAGE=stage-android
+          rm -rf "$STAGE" && mkdir -p "$STAGE"
+          cp "$BIN" "$STAGE/"
+          cp "$CDYLIB" "$STAGE/"
+
+      - name: Run harness on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: arm64-v8a
+          force-avd-creation: true
+          disable-animations: true
+          emulator-options: -no-snapshot-save -no-window -no-boot-anim -gpu swiftshader_indirect -noaudio
+          working-directory: ${{ env.HARNESS_DIR }}
+          script: |
+            set -euxo pipefail
+            adb push stage-android /data/local/tmp/
+            adb shell chmod +x /data/local/tmp/stage-android/determinism-harness
+            adb shell "cd /data/local/tmp/stage-android && LD_LIBRARY_PATH=. ./determinism-harness /data/local/tmp/stage-android/proof_bytes.bin"
+            adb pull /data/local/tmp/stage-android/proof_bytes.bin ./${{ env.PROOF_FILENAME }}
+            test -s ./${{ env.PROOF_FILENAME }}
+            shasum -a 256 ./${{ env.PROOF_FILENAME }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-proof
+          path: ${{ env.HARNESS_DIR }}/${{ env.PROOF_FILENAME }}
+          if-no-files-found: error
+
+  compare:
+    name: Assert sha256(iOS proof) == sha256(Android proof)
+    needs: [ios-sim, android-emu]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ios-proof
+          path: artifacts/ios
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-proof
+          path: artifacts/android
+
+      - name: Compare
+        run: |
+          set -euo pipefail
+          IOS_SHA=$(sha256sum artifacts/ios/${{ env.PROOF_FILENAME }} | awk '{print $1}')
+          AND_SHA=$(sha256sum artifacts/android/${{ env.PROOF_FILENAME }} | awk '{print $1}')
+          echo "iOS    sha256: $IOS_SHA"
+          echo "Android sha256: $AND_SHA"
+          if [ "$IOS_SHA" != "$AND_SHA" ]; then
+            echo "::error::Mobile-mobile proof determinism violated (iOS != Android)"
+            diff <(xxd artifacts/ios/${{ env.PROOF_FILENAME }}) <(xxd artifacts/android/${{ env.PROOF_FILENAME }}) | head -60 || true
+            exit 1
+          fi
+          echo "OK: $IOS_SHA"
