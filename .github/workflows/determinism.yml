@@ -130,7 +130,7 @@ jobs:
 
       - name: Build harness for Android arm64
         working-directory: ${{ env.HARNESS_DIR }}
-        run: cargo ndk -t arm64-v8a build --release --bin determinism-harness
+        run: cargo ndk --platform 26 -t arm64-v8a build --release --bin determinism-harness
 
       - name: Stage binary + prover cdylib
         working-directory: ${{ env.HARNESS_DIR }}
