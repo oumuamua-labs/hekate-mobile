@@ -11,9 +11,6 @@ boundary.
 > orchestrator, and Android Gradle scaffolding. Iterates independently of the open core and closed prover's release
 > cadence.
 
-> [!WARNING]
-> Alpha. APIs and ABIs break without notice. Do not pin a production build to anything in this tree.
-
 ---
 
 ## Audience and Role Boundary

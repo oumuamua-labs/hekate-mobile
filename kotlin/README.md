@@ -27,7 +27,7 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 dependencies {
-    implementation("com.github.oumuamua-dev:hekate-mobile:0.1.0")
+    implementation("com.github.oumuamua-labs:hekate-mobile:0.1.0")
 }
 ```
 
@@ -47,7 +47,7 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 dependencies {
-    implementation("dev.oumuamua:hekate-prover:0.1.0")
+    implementation("dev.oumuamua.hekate:hekate:0.1.0")
 }
 ```
 

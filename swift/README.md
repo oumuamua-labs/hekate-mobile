@@ -16,13 +16,13 @@ cancel actually reaches Rust.
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/oumuamua-dev/hekate-mobile.git", from: "0.1.0"),
+    .package(url: "https://github.com/oumuamua-labs/hekate-mobile.git", from: "0.1.0"),
 ],
 targets: [
     .target(
         name: "YourApp",
         dependencies: [
-            .product(name: "Hekate", library: "hekate-swift"),
+            .product(name: "Hekate", package: "hekate-swift"),
             // plus the per-prover xcframeworks produced by `cargo xtask ios-build`
         ]
     )
