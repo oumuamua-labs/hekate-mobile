@@ -125,6 +125,7 @@ pub fn prove(inputs: MyInputs, cancel: Option<Arc<CancelToken>>) -> Result<MyOut
 cargo xtask doctor                 verify host prereqs
 cargo xtask ios-build              cross-compile, wrap frameworks, bind Swift, assemble + codesign xcframeworks
 cargo xtask ios-build --unsigned   CI / dev escape hatch; refuses to silently skip signing
+cargo xtask android-build          cross-compile via cargo-ndk, bind Kotlin, bundle jniLibs, assemble .aar
 ```
 
 ### `doctor`
@@ -165,6 +166,35 @@ Per slice (`aarch64-apple-ios`, `aarch64-apple-ios-sim`):
 
 Two xcframeworks, not one nested. App Store processing accepts the flat layout; nested
 `Foo.framework/Frameworks/Bar.framework` is structurally allowed but fragile under Apple's pipeline.
+
+### `android-build`
+
+Per ABI (`arm64-v8a` → `aarch64-linux-android`; additional ABIs slot into the same loop):
+
+1. `cargo ndk -t <abi> build --release -p <pkg> --lib`. `cargo-ndk` wires the NDK linker for the target triple
+   against the live `hekate-prover-sys` manifest; the build script pulls the matching signed prover cdylib from
+   the CDN.
+2. Resolve both shared objects: the dev crate's `lib<dev>.so` from
+   `target/<triple>/release/`, and `libhekate_prover_cdylib.so` from the freshest
+   `target/<triple>/release/build/hekate-prover-sys-*/out/` directory.
+3. Copy both `.so` files into `android/lib/src/main/jniLibs/<abi>/`. Both must coexist in the same ABI directory
+   — Android's dynamic loader resolves `libhekate_prover_cdylib.so` by name when the dev `.so` declares it as
+   a `NEEDED` entry.
+4. Generate Kotlin bindings via the per-template `[[bin]] uniffi-bindgen` target, pointed at the freshly built
+   dev `.so` with `--library`. Output lands under `android/lib/src/main/kotlin/uniffi/<crate>/<crate>.kt`. Pinning
+   bindgen to the template's `uniffi` crate keeps generator and runtime in lockstep by construction.
+5. Inject `System.loadLibrary("hekate_prover_cdylib")` into the generated Kotlin via a regex-anchored
+   single-shot replacement against `internal object IntegrityCheckingUniffiLib { init { Native.register(…)`. The
+   anchor is pinned to uniffi 0.31.1's codegen — if uniffi is bumped, fixture tests in `android_build.rs` fail
+   loudly and force a re-pin. The prover library loads *before* the JNA registration call, guaranteeing the dev
+   cdylib's `dlopen` of `libhekate_prover_cdylib.so` resolves against an already-mapped image rather than
+   triggering recursive lookup from a half-initialized state.
+6. `./gradlew :lib:assembleRelease --console=plain` from `android/`. Gradle packs `jniLibs/<abi>/*.so` and the
+   patched Kotlin into `android/lib/build/outputs/aar/lib-release.aar`.
+7. Copy to `target/aar/<pkg>-release.aar` for symmetry with the iOS artifact path.
+
+One `.aar` per crate, not one per ABI: AGP packs all ABIs into a single archive and the consuming app picks at
+install time.
 
 ---
 
