@@ -1,0 +1,22 @@
+[package]
+name = "mobile-determinism-harness"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[[bin]]
+name = "determinism-harness"
+path = "src/main.rs"
+
+[dependencies]
+hekate-prover-sys = { version = "=0.27.5", features = ["ct"] }
+hekate-core = "=0.27.5"
+hekate-program = "=0.27.5"
+hekate-math = "=0.6.0"
+hekate-sdk = "=0.27.5"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
