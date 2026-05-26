@@ -10,11 +10,11 @@ name = "determinism-harness"
 path = "src/main.rs"
 
 [dependencies]
-hekate-prover-sys = { version = "=0.27.5", features = ["ct"] }
-hekate-core = "=0.27.5"
-hekate-program = "=0.27.5"
+hekate-prover-sys = { version = "=0.28.0", features = ["ct"] }
+hekate-core = "=0.28.0"
+hekate-program = "=0.28.0"
 hekate-math = "=0.6.0"
-hekate-sdk = "=0.27.5"
+hekate-sdk = "=0.28.0"
 
 [profile.release]
 opt-level = 3
