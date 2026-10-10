@@ -2,6 +2,7 @@ mod inputs;
 mod program;
 
 use hekate_core::config::Config;
+use hekate_program::digest::program_id_hex;
 use hekate_prover_sys::{CancelToken as ProverCancelToken, Error as ProverError, ErrorCode};
 use std::any::Any;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -69,7 +70,14 @@ fn prove_inner(
     inputs: &MyInputs,
     cancel: Option<&ProverCancelToken>,
 ) -> Result<MyOutput, ProveError> {
-    let (air, instance, witness) = program::build_program_state(inputs)?;
+    let air = program::build_program()
+        .map_err(|e| ProveError::InvalidInput(format!("build program: {e}")))?;
+
+    let instance = program::instance(inputs);
+    let witness = program::build_witness(inputs)?;
+
+    let program_id =
+        program_id_hex(&air).map_err(|e| ProveError::Prover(format!("program id: {e}")))?;
 
     let mut seed = [0u8; 32];
     getrandom::fill(&mut seed).map_err(|e| ProveError::Prover(format!("getrandom: {e}")))?;
@@ -87,7 +95,7 @@ fn prove_inner(
 
     let proof_bytes = hekate_sdk::serialize_proof_bytes(&proof);
 
-    Ok(MyOutput::from_parts(proof_bytes, inputs))
+    Ok(MyOutput::from_parts(program_id, proof_bytes, inputs))
 }
 
 fn map_prover_error(err: ProverError) -> ProveError {
