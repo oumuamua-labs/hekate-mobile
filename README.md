@@ -17,7 +17,7 @@ boundary.
 
 Two roles. Hard line between them.
 
-**Rust dev.** Single human, the SDK author. Writes `impl Air<Block128>` + `impl Program<Block128>` + witness-gen +
+**Rust dev.** Single human, the SDK author. Writes the `Circuit<Block128>` program + witness-gen +
 public-input encoder + the `#[uniffi::export]` surface. Runs the cross-compile + bindgen + framework-assembly
 pipeline. Ships `MyProver.xcframework` + `MyProver.aar` to the mobile team.
 
@@ -83,6 +83,7 @@ pub struct MyInputs {
 
 #[derive(uniffi::Record)]
 pub struct MyOutput {
+    pub program_id: String,
     pub proof_bytes: Vec<u8>, /* public outputs */
 }
 
@@ -92,7 +93,11 @@ pub enum ProveError { /* mapped from prover */ }
 #[uniffi::export]
 pub fn prove(inputs: MyInputs, cancel: Option<Arc<CancelToken>>) -> Result<MyOutput, ProveError> {
     let result = catch_unwind(AssertUnwindSafe(|| {
-        let (air, instance, witness) = build_program_state(&inputs)?;
+        let air = program::build_program()?;
+        let instance = program::instance(&inputs);
+        let witness = program::build_witness(&inputs)?;
+
+        let program_id = program_id_hex(&air)?;
 
         let mut seed = [0u8; 32];
         getrandom::fill(&mut seed)?;
@@ -107,7 +112,11 @@ pub fn prove(inputs: MyInputs, cancel: Option<Arc<CancelToken>>) -> Result<MyOut
             cancel,
         ).map_err(map_prover_error)?;
 
-        Ok(MyOutput::from_parts(hekate_sdk::serialize_proof_bytes(&proof), &inputs))
+        Ok(MyOutput::from_parts(
+            program_id,
+            hekate_sdk::serialize_proof_bytes(&proof),
+            &inputs,
+        ))
     }));
 
     result.unwrap_or_else(|p| Err(ProveError::Panic(panic_message(p))))
