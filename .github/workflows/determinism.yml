@@ -90,9 +90,8 @@ jobs:
           set -euxo pipefail
           STAGE=$(pwd)/stage-ios
           OUT_HOST=$(pwd)/${{ env.PROOF_FILENAME }}
-          xcrun simctl spawn "$SIM_UDID" "$STAGE/determinism-harness" "$OUT_HOST"
+          xcrun simctl spawn "$SIM_UDID" "$STAGE/determinism-harness" prove "$OUT_HOST"
           test -s "$OUT_HOST"
-          shasum -a 256 "$OUT_HOST"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -157,10 +156,9 @@ jobs:
             set -euxo pipefail
             adb push stage-android /data/local/tmp/
             adb shell chmod +x /data/local/tmp/stage-android/determinism-harness
-            adb shell "cd /data/local/tmp/stage-android && LD_LIBRARY_PATH=. ./determinism-harness /data/local/tmp/stage-android/proof_bytes.bin"
+            adb shell "cd /data/local/tmp/stage-android && LD_LIBRARY_PATH=. ./determinism-harness prove /data/local/tmp/stage-android/proof_bytes.bin"
             adb pull /data/local/tmp/stage-android/proof_bytes.bin ./${{ env.PROOF_FILENAME }}
             test -s ./${{ env.PROOF_FILENAME }}
-            shasum -a 256 ./${{ env.PROOF_FILENAME }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -168,11 +166,19 @@ jobs:
           path: ${{ env.HARNESS_DIR }}/${{ env.PROOF_FILENAME }}
           if-no-files-found: error
 
-  compare:
-    name: Assert sha256(iOS proof) == sha256(Android proof)
+  cross-verify:
+    name: Verify iOS and Android proofs on Linux arm64
     needs: [ios-sim, android-emu]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build harness for Linux arm64
+        working-directory: ${{ env.HARNESS_DIR }}
+        run: cargo build --release --bin determinism-harness
+
       - uses: actions/download-artifact@v4
         with:
           name: ios-proof
@@ -183,16 +189,24 @@ jobs:
           name: android-proof
           path: artifacts/android
 
-      - name: Compare
+      # The cdylib hedges the caller seed with fresh OS entropy:
+      # proof bytes and length differ on every run. A third
+      # platform accepting both proofs is what stays comparable.
+      - name: Verify
+        working-directory: ${{ env.HARNESS_DIR }}
         run: |
           set -euo pipefail
-          IOS_SHA=$(sha256sum artifacts/ios/${{ env.PROOF_FILENAME }} | awk '{print $1}')
-          AND_SHA=$(sha256sum artifacts/android/${{ env.PROOF_FILENAME }} | awk '{print $1}')
-          echo "iOS    sha256: $IOS_SHA"
-          echo "Android sha256: $AND_SHA"
-          if [ "$IOS_SHA" != "$AND_SHA" ]; then
-            echo "::error::Mobile-mobile proof determinism violated (iOS != Android)"
-            diff <(xxd artifacts/ios/${{ env.PROOF_FILENAME }}) <(xxd artifacts/android/${{ env.PROOF_FILENAME }}) | head -60 || true
+          CDYLIB=$(find target/release/build -name 'libhekate_prover_cdylib.so' | head -1)
+          if [ -z "$CDYLIB" ]; then
+            echo "::error::prover cdylib not found under target/release/build"
             exit 1
           fi
-          echo "OK: $IOS_SHA"
+          export LD_LIBRARY_PATH=$(dirname "$CDYLIB")
+          STATUS=0
+          for PLATFORM in ios android; do
+            if ! target/release/determinism-harness verify "$GITHUB_WORKSPACE/artifacts/$PLATFORM/${{ env.PROOF_FILENAME }}"; then
+              echo "::error::$PLATFORM proof did not verify on Linux arm64"
+              STATUS=1
+            fi
+          done
+          exit "$STATUS"

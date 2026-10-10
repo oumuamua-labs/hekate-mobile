@@ -2,14 +2,19 @@
 // Copyright 2026 Oumuamua Labs <info@oumuamua.dev>
 
 use hekate_core::config::Config;
-use hekate_core::trace::{ColumnType, Trace, TraceBuilder};
+use hekate_core::proofs::InnerProof;
+use hekate_core::trace::TraceBuilder;
+use hekate_crypto::DefaultHasher;
+use hekate_crypto::transcript::Transcript;
 use hekate_math::{Bit, Block32, Block128, TowerField};
-use hekate_program::constraint::builder::ConstraintSystem;
-use hekate_program::constraint::{BoundaryConstraint, ConstraintAst};
-use hekate_program::{Air, Program, ProgramInstance, ProgramWitness, define_columns};
+use hekate_program::circuit::{Circuit, CircuitProgram};
+use hekate_program::digest::program_id;
+use hekate_program::{FixedShape, ProgramInstance, ProgramWitness, define_columns};
+use hekate_verifier::HekateVerifier;
 use std::process::ExitCode;
 
 type F = Block128;
+type H = DefaultHasher;
 
 const TRANSCRIPT_LABEL: &[u8] = b"hekate-mobile-determinism-v1";
 const SEED: [u8; 32] = [0u8; 32];
@@ -24,61 +29,38 @@ define_columns! {
     }
 }
 
-#[derive(Clone)]
-struct HarnessAir {
-    layout: Vec<ColumnType>,
+fn build_program() -> Result<CircuitProgram<F>, String> {
+    let mut cx =
+        Circuit::<F>::new("HarnessProgram", NUM_ROWS).map_err(|e| format!("circuit: {e}"))?;
+
+    let cols = cx.schema(&Cols::build_layout());
+
+    let cs = cx.cs();
+    let q = cs.col(cols.at(Cols::Q).index());
+    let value = cs.col(cols.at(Cols::VALUE).index());
+
+    cs.constrain(q * (cs.next(cols.at(Cols::VALUE).index()) + value));
+
+    cx.fix(cols.at(Cols::Q), FixedShape::LastRow);
+    cx.publish(cols.at(Cols::VALUE), 0);
+
+    cx.compile().map_err(|e| format!("compile: {e}"))
 }
 
-impl HarnessAir {
-    fn new() -> Self {
-        Self {
-            layout: Cols::build_layout(),
-        }
-    }
+fn instance() -> ProgramInstance<F> {
+    ProgramInstance::new(NUM_ROWS, vec![F::from(u128::from(FIXED_VALUE))])
 }
 
-impl Air<F> for HarnessAir {
-    fn num_columns(&self) -> usize {
-        Cols::NUM_COLUMNS
-    }
-
-    fn column_layout(&self) -> &[ColumnType] {
-        &self.layout
-    }
-
-    fn boundary_constraints(&self) -> Vec<BoundaryConstraint<F>> {
-        vec![BoundaryConstraint::with_public_input(Cols::VALUE, 0, 0)]
-    }
-
-    fn constraint_ast(&self) -> ConstraintAst<F> {
-        let cs = ConstraintSystem::<F>::new();
-        
-        let [value, q] = [cs.col(Cols::VALUE), cs.col(Cols::Q)];
-        let next_value = cs.next(Cols::VALUE);
-        
-        cs.constrain(q * (next_value + value));
-        
-        cs.build()
-    }
-}
-
-impl Program<F> for HarnessAir {
-    fn num_public_inputs(&self) -> usize {
-        1
-    }
-}
-
-fn build_state() -> Result<(HarnessAir, ProgramInstance<F>, ProgramWitness<F>), String> {
+fn build_witness() -> Result<ProgramWitness<F>, String> {
     let value = Block32::from(FIXED_VALUE);
 
     let mut tb =
         TraceBuilder::new(&Cols::build_layout(), NUM_VARS).map_err(|e| format!("trace: {e}"))?;
 
     for i in 0..NUM_ROWS {
-        let selector = if i + 1 < NUM_ROWS {
-            Bit::ONE
-        } else {
-            Bit::ZERO
+        let selector = match i + 1 < NUM_ROWS {
+            true => Bit::ONE,
+            false => Bit::ZERO,
         };
 
         tb.set_b32(Cols::VALUE, i, value)
@@ -87,53 +69,79 @@ fn build_state() -> Result<(HarnessAir, ProgramInstance<F>, ProgramWitness<F>), 
             .map_err(|e| format!("q[{i}]: {e}"))?;
     }
 
-    let trace = tb.build();
-    let public_input = trace
-        .get_element::<F>(Cols::VALUE, 0)
-        .map_err(|e| format!("public input: {e}"))?
-        .to_tower();
-
-    Ok((
-        HarnessAir::new(),
-        ProgramInstance::new(NUM_ROWS, vec![public_input]),
-        ProgramWitness::<F>::new(trace),
-    ))
+    Ok(ProgramWitness::<F>::new(tb.build()))
 }
 
-fn run(out_path: &str) -> Result<(), String> {
-    let (air, instance, witness) = build_state()?;
-    let config = Config::default();
+fn verify(air: &CircuitProgram<F>, proof: &InnerProof<F>) -> Result<(), String> {
+    let id = program_id::<F, _>(air).map_err(|e| format!("program id: {e}"))?;
+    let mut transcript = Transcript::<H>::new(TRANSCRIPT_LABEL);
+
+    let accepted = HekateVerifier::<F, H>::verify(
+        &id,
+        air,
+        &instance(),
+        proof,
+        &mut transcript,
+        &Config::default(),
+    )
+    .map_err(|e| format!("verify: {e}"))?;
+
+    match accepted {
+        true => Ok(()),
+        false => Err(String::from("verifier rejected the proof")),
+    }
+}
+
+fn prove_to(out_path: &str) -> Result<(), String> {
+    let air = build_program()?;
 
     let proof = hekate_prover_sys::prove(
         TRANSCRIPT_LABEL,
         &air,
-        &instance,
-        &witness,
-        &config,
+        &instance(),
+        &build_witness()?,
+        &Config::default(),
         SEED,
         None,
     )
     .map_err(|e| format!("prove: {e}"))?;
 
+    verify(&air, &proof)?;
+
     let bytes = hekate_sdk::serialize_proof_bytes(&proof);
     std::fs::write(out_path, &bytes).map_err(|e| format!("write {out_path}: {e}"))?;
 
-    eprintln!("wrote {} bytes to {out_path}", bytes.len());
+    eprintln!("verified; wrote {} bytes to {out_path}", bytes.len());
+
+    Ok(())
+}
+
+fn verify_file(proof_path: &str) -> Result<(), String> {
+    let bytes = std::fs::read(proof_path).map_err(|e| format!("read {proof_path}: {e}"))?;
+
+    let proof = hekate_sdk::deserialize_proof::<F>(&bytes)
+        .map_err(|e| format!("deserialize {proof_path}: {e}"))?;
+
+    verify(&build_program()?, &proof).map_err(|e| format!("{proof_path}: {e}"))?;
+
+    eprintln!("verified {} bytes from {proof_path}", bytes.len());
 
     Ok(())
 }
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
-    let out_path = match args.get(1) {
-        Some(p) => p.as_str(),
-        None => {
-            eprintln!("usage: determinism-harness <out-path>");
+
+    let result = match (args.get(1).map(String::as_str), args.get(2)) {
+        (Some("prove"), Some(out_path)) => prove_to(out_path),
+        (Some("verify"), Some(proof_path)) => verify_file(proof_path),
+        _ => {
+            eprintln!("usage: determinism-harness prove <out-path> | verify <proof-path>");
             return ExitCode::from(2);
         }
     };
 
-    match run(out_path) {
+    match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("[fail] {e}");
