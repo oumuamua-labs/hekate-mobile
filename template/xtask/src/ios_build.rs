@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Oumuamua Labs <info@oumuamua.dev>
-
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};

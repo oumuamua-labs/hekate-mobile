@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Oumuamua Labs <info@oumuamua.dev>
-
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
