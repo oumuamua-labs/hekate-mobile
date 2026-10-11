@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Andrei Kochergin <andrei@oumuamua.dev>
+// SPDX-FileCopyrightText: 2026 Oumuamua Labs <info@oumuamua.dev>
+// SPDX-License-Identifier: AGPL-3.0-only
 
 plugins {
     kotlin("jvm")
@@ -38,8 +40,8 @@ publishing {
                 description.set("Async + cancellation wrappers for UniFFI-generated Hekate prover bindings.")
                 licenses {
                     license {
-                        name.set("Apache-2.0")
-                        url.set("https://www.apache.org/licenses/LICENSE-2.0")
+                        name.set("AGPL-3.0-only")
+                        url.set("https://www.gnu.org/licenses/agpl-3.0.txt")
                     }
                 }
             }

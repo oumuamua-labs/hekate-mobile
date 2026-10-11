@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Oumuamua Labs <info@oumuamua.dev>
+// SPDX-FileCopyrightText: 2026 Andrei Kochergin <andrei@oumuamua.dev>
+// SPDX-FileCopyrightText: 2026 Oumuamua Labs <info@oumuamua.dev>
+// SPDX-License-Identifier: AGPL-3.0-only
 
 package dev.oumuamua.hekate
 

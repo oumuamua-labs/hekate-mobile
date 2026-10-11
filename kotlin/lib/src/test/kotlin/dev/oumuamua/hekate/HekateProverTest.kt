@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Oumuamua Labs <info@oumuamua.dev>
+// SPDX-FileCopyrightText: 2026 Andrei Kochergin <andrei@oumuamua.dev>
+// SPDX-FileCopyrightText: 2026 Oumuamua Labs <info@oumuamua.dev>
+// SPDX-License-Identifier: AGPL-3.0-only
 
 package dev.oumuamua.hekate
 
@@ -42,7 +43,7 @@ class HekateProverTest {
     }
 
     @Test
-    fun sync_prove_error_surfaces_on_async_path() = runBlocking {
+    fun sync_prove_error_surfaces_on_async_path() = runBlocking<Unit> {
         val prover = object : HekateProver<Unit, Unit, TestToken> {
             override fun makeCancelToken() = TestToken()
             override fun prove(inputs: Unit, cancel: TestToken): Unit = throw Boom()
