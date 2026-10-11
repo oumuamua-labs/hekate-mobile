@@ -10,7 +10,8 @@ const PROVER_DYLIB_STEM: &str = "libhekate_prover_cdylib";
 struct BuildInfo {
     pkg_name: String,
     lib_name: String,
-    framework_name: String,
+    ffi_module_name: String,
+    xcframework_name: String,
     dev_version: String,
     prover_version: String,
 }
@@ -67,6 +68,7 @@ pub fn run(unsigned: bool) -> ExitCode {
         let prover_fw = match wrap_framework(
             &prover_dylib,
             PROVER_FRAMEWORK,
+            PROVER_FRAMEWORK,
             &frameworks_dir,
             slice_platform(slice),
             &info.prover_version,
@@ -79,7 +81,8 @@ pub fn run(unsigned: bool) -> ExitCode {
 
         let dev_fw = match wrap_framework(
             &dev_dylib,
-            &info.framework_name,
+            &info.ffi_module_name,
+            &info.xcframework_name,
             &frameworks_dir,
             slice_platform(slice),
             &info.dev_version,
@@ -88,7 +91,7 @@ pub fn run(unsigned: bool) -> ExitCode {
             Err(e) => return fail(&format!("{slice}: dev framework: {e}")),
         };
 
-        if let Err(e) = relink_prover_ref(&dev_fw, &info.framework_name, &prover_old_ref) {
+        if let Err(e) = relink_prover_ref(&dev_fw, &info.ffi_module_name, &prover_old_ref) {
             return fail(&format!("{slice}: relink: {e}"));
         }
 
@@ -104,7 +107,7 @@ pub fn run(unsigned: bool) -> ExitCode {
     let swift_out = workspace
         .join("target")
         .join("swift")
-        .join(&info.framework_name);
+        .join(&info.xcframework_name);
 
     let metadata_source = match metadata_dylib {
         Some(p) => p,
@@ -125,9 +128,9 @@ pub fn run(unsigned: bool) -> ExitCode {
             .join(slice)
             .join("release")
             .join("frameworks")
-            .join(format!("{}.framework", info.framework_name));
+            .join(format!("{}.framework", info.ffi_module_name));
 
-        if let Err(e) = wire_bindings_into_framework(&dev_fw, &swift_out, &info.lib_name) {
+        if let Err(e) = wire_bindings_into_framework(&dev_fw, &swift_out, &info.ffi_module_name) {
             return fail(&format!("{slice}: wire bindings: {e}"));
         }
     }
@@ -146,14 +149,20 @@ pub fn run(unsigned: bool) -> ExitCode {
         return fail(&format!("mkdir {}: {e}", xcf_root.display()));
     }
 
-    let prover_xcf = match assemble_xcframework(&workspace, PROVER_FRAMEWORK, &xcf_root) {
-        Ok(p) => p,
-        Err(e) => return fail(&format!("prover xcframework: {e}")),
-    };
+    let prover_xcf =
+        match assemble_xcframework(&workspace, PROVER_FRAMEWORK, PROVER_FRAMEWORK, &xcf_root) {
+            Ok(p) => p,
+            Err(e) => return fail(&format!("prover xcframework: {e}")),
+        };
 
     println!("[ok]   {}", prover_xcf.display());
 
-    let dev_xcf = match assemble_xcframework(&workspace, &info.framework_name, &xcf_root) {
+    let dev_xcf = match assemble_xcframework(
+        &workspace,
+        &info.ffi_module_name,
+        &info.xcframework_name,
+        &xcf_root,
+    ) {
         Ok(p) => p,
         Err(e) => return fail(&format!("dev xcframework: {e}")),
     };
@@ -248,7 +257,8 @@ fn read_build_info(workspace: &Path) -> Result<BuildInfo, String> {
     let prover_version = parse_prover_version(&parsed)?;
 
     Ok(BuildInfo {
-        framework_name: pascalize(&pkg_name),
+        ffi_module_name: format!("{lib_name}FFI"),
+        xcframework_name: pascalize(&pkg_name),
         pkg_name,
         lib_name,
         dev_version,
@@ -398,6 +408,7 @@ fn read_prover_load_dylib(dev_dylib: &Path) -> Result<String, String> {
 fn wrap_framework(
     dylib_src: &Path,
     name: &str,
+    bundle_id_suffix: &str,
     output_root: &Path,
     platform: &str,
     version: &str,
@@ -413,7 +424,7 @@ fn wrap_framework(
     std::fs::copy(dylib_src, &bin_dst)
         .map_err(|e| format!("copy {} -> {}: {e}", dylib_src.display(), bin_dst.display()))?;
 
-    let plist = info_plist(name, platform, version);
+    let plist = info_plist(name, bundle_id_suffix, platform, version);
     std::fs::write(fw_dir.join("Info.plist"), plist)
         .map_err(|e| format!("write Info.plist in {}: {e}", fw_dir.display()))?;
 
@@ -488,7 +499,7 @@ fn slice_platform(slice: &str) -> &'static str {
     }
 }
 
-fn info_plist(name: &str, platform: &str, version: &str) -> String {
+fn info_plist(name: &str, bundle_id_suffix: &str, platform: &str, version: &str) -> String {
     let bundle_version = sanitize_bundle_version(version);
     format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -516,7 +527,7 @@ fn info_plist(name: &str, platform: &str, version: &str) -> String {
 </dict>
 </plist>
 "#,
-        lower = name.to_ascii_lowercase()
+        lower = bundle_id_suffix.to_ascii_lowercase()
     )
 }
 
@@ -537,10 +548,10 @@ fn sanitize_bundle_version(raw: &str) -> String {
 fn wire_bindings_into_framework(
     framework: &Path,
     swift_out: &Path,
-    lib_name: &str,
+    ffi_module_name: &str,
 ) -> Result<(), String> {
-    let header_src = swift_out.join(format!("{lib_name}FFI.h"));
-    let modulemap_src = swift_out.join(format!("{lib_name}FFI.modulemap"));
+    let header_src = swift_out.join(format!("{ffi_module_name}.h"));
+    let modulemap_src = swift_out.join(format!("{ffi_module_name}.modulemap"));
 
     if !header_src.is_file() {
         return Err(format!("missing {}", header_src.display()));
@@ -558,7 +569,7 @@ fn wire_bindings_into_framework(
     std::fs::create_dir_all(&modules_dir)
         .map_err(|e| format!("mkdir {}: {e}", modules_dir.display()))?;
 
-    let header_dst = headers_dir.join(format!("{lib_name}FFI.h"));
+    let header_dst = headers_dir.join(format!("{ffi_module_name}.h"));
     std::fs::copy(&header_src, &header_dst).map_err(|e| format!("copy header: {e}"))?;
 
     let modulemap_text = std::fs::read_to_string(&modulemap_src)
@@ -593,9 +604,10 @@ fn rewrite_modulemap_as_framework(text: &str) -> Result<String, String> {
 fn assemble_xcframework(
     workspace: &Path,
     framework_name: &str,
+    xcframework_name: &str,
     out_dir: &Path,
 ) -> Result<PathBuf, String> {
-    let xcf_path = out_dir.join(format!("{framework_name}.xcframework"));
+    let xcf_path = out_dir.join(format!("{xcframework_name}.xcframework"));
 
     let mut args: Vec<String> = vec!["-create-xcframework".into()];
     for slice in SLICES {

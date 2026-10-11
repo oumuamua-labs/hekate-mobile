@@ -45,12 +45,7 @@ called `my-prover` gives these:
 | `HekateProverCdylib.xcframework` | App target, embedded |
 | `my_prover.swift`                | App target sources   |
 
-`my_prover.swift` imports a C module, `my_proverFFI`, whose module map sits inside the xcframework. Point the Swift
-compiler at it in *Other Swift Flags*:
-
-```
--Xcc -fmodule-map-file=<path to MyProver.xcframework>/ios-arm64/MyProver.framework/Modules/module.modulemap
-```
+`my_prover.swift` imports the C module `my_proverFFI`, which ships inside `MyProver.xcframework`.
 
 The bindings give you a free function `prove(inputs:cancel:)` and a `CancelToken` class. Declare the prover type
 once to make them a `HekateProver`:
