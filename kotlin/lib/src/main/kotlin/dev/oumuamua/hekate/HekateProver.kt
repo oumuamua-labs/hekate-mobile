@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Oumuamua Labs <info@oumuamua.dev>
+// SPDX-FileCopyrightText: 2026 Andrei Kochergin <andrei@oumuamua.dev>
+// SPDX-FileCopyrightText: 2026 Oumuamua Labs <info@oumuamua.dev>
+// SPDX-License-Identifier: AGPL-3.0-only
 
 package dev.oumuamua.hekate
 
@@ -8,7 +9,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
-/** UniFFI-generated. Do not implement by hand. */
 public interface HekateProver<Inputs, Output, Token : CancelToken> {
     public fun prove(inputs: Inputs, cancel: Token): Output
     public fun makeCancelToken(): Token
