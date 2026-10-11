@@ -21,6 +21,7 @@ env:
   CARGO_TERM_COLOR: always
   HARNESS_DIR: tests/mobile_determinism
   PROOF_FILENAME: proof_bytes.bin
+  BIONIC_IMAGE: termux/termux-docker:aarch64@sha256:d9e15c9751ed0e5d436ca32f97bf02b670cc004df4b01b7bfd8d145a84ba0575
 
 jobs:
   sync-check:
@@ -101,10 +102,10 @@ jobs:
           path: ${{ env.HARNESS_DIR }}/${{ env.PROOF_FILENAME }}
           if-no-files-found: error
 
-  android-emu:
-    name: Android arm64 emulator
+  android-build:
+    name: Android arm64 build
     needs: [sync-check]
-    runs-on: macos-14
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -145,33 +146,42 @@ jobs:
           cp "$BIN" "$STAGE/"
           cp "$CDYLIB" "$STAGE/"
 
-      - name: Run harness on Android emulator
-        uses: reactivecircus/android-emulator-runner@v2
+      - uses: actions/upload-artifact@v4
         with:
-          api-level: 33
-          target: google_apis
-          arch: arm64-v8a
-          force-avd-creation: true
-          disable-animations: true
-          emulator-options: -no-snapshot-save -no-window -no-boot-anim -gpu swiftshader_indirect -noaudio
-          working-directory: ${{ env.HARNESS_DIR }}
-          script: |
-            set -euxo pipefail
-            adb push stage-android /data/local/tmp/
-            adb shell chmod +x /data/local/tmp/stage-android/determinism-harness
-            adb shell "cd /data/local/tmp/stage-android && LD_LIBRARY_PATH=. ./determinism-harness prove /data/local/tmp/stage-android/proof_bytes.bin"
-            adb pull /data/local/tmp/stage-android/proof_bytes.bin ./${{ env.PROOF_FILENAME }}
-            test -s ./${{ env.PROOF_FILENAME }}
+          name: android-stage
+          path: ${{ env.HARNESS_DIR }}/stage-android
+          if-no-files-found: error
+
+  android-bionic:
+    name: Android arm64 on bionic
+    needs: [android-build]
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-stage
+          path: stage-android
+
+      - name: Run harness on bionic
+        run: |
+          set -euxo pipefail
+          chmod +x stage-android/determinism-harness
+          docker run --rm --network none \
+            -v "$PWD/stage-android:/work" -w /work \
+            -e LD_LIBRARY_PATH=/work \
+            --entrypoint /work/determinism-harness \
+            "$BIONIC_IMAGE" prove "/work/$PROOF_FILENAME"
+          test -s "stage-android/$PROOF_FILENAME"
 
       - uses: actions/upload-artifact@v4
         with:
           name: android-proof
-          path: ${{ env.HARNESS_DIR }}/${{ env.PROOF_FILENAME }}
+          path: stage-android/${{ env.PROOF_FILENAME }}
           if-no-files-found: error
 
   cross-verify:
     name: Verify iOS and Android proofs on Linux arm64
-    needs: [ios-sim, android-emu]
+    needs: [ios-sim, android-bionic]
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
