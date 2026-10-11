@@ -12,15 +12,23 @@ commands turn that crate into two xcframeworks and an `.aar` with the Hekate pro
 Swift and Kotlin guides: [oumuamua.dev/mobile](https://oumuamua.dev/mobile). The proof system:
 [Hekate](https://github.com/oumuamua-labs/hekate).
 
+> [!NOTE]  
+> Hekate's open code is AGPL-3.0-only; its signed prover binary shipped as free binaries for macOS (Apple Silicon),
+> Linux (ARM64, glibc), iOS (ARM64, device and simulator), and Android (ARM64).
+> A product shipped under other terms, open source or closed, needs a commercial license.
+
 ---
 
 ## What You Can Do
 
-| You are           | You do                                                                                   | You get                                                             |
-|:------------------|:-----------------------------------------------------------------------------------------|:--------------------------------------------------------------------|
-| Rust developer    | Describe the statement in `src/program.rs` and its inputs and outputs in `src/inputs.rs` | Two xcframeworks, Swift bindings and one `.aar`, ready to hand over |
-| iOS developer     | Embed the frameworks, add the bindings file, declare `MyProver`                          | `try await MyProver.prove(inputs:)`, stopped by `Task.cancel()`     |
-| Android developer | Add the `.aar` and JNA, declare `MyProver`                                               | `MyProver.prove(inputs)` in a coroutine, stopped by `Job.cancel()`  |
+The work splits into three roles, and each has one job:
+
+- On the Rust side, describe the statement in `src/program.rs` and its inputs and outputs in `src/inputs.rs`.
+  You get two xcframeworks, Swift bindings and one `.aar`, ready to hand over.
+- On the iOS side, embed the frameworks, add the bindings file and declare `MyProver`. You get
+  `try await MyProver.prove(inputs:)`, stopped by `Task.cancel()`.
+- On the Android side, add the `.aar` and JNA and declare `MyProver`. You get `MyProver.prove(inputs)` in a
+  coroutine, stopped by `Job.cancel()`.
 
 The API the app calls is made of your own types: `MyInputs`, `MyOutput`, `CancelToken` and a typed error. No field
 element, trace or transcript appears in Swift or Kotlin. `MyProver` is a type the app declares once in a few lines;
@@ -31,35 +39,46 @@ each platform.
 
 ## Quick Start
 
+Five commands generate a crate and build it for both platforms:
+
 ```bash
 cargo generate --git https://github.com/oumuamua-labs/hekate-mobile template --name my-prover
 cd my-prover
 cargo xtask doctor
-cargo xtask ios-build
+cargo xtask ios-build --unsigned
 cargo xtask android-build
 ```
 
-`doctor` names every missing prerequisite and prints the fix. The generated crate proves a
-sample statement as it stands: knowledge of a 32-bit value pinned to a public input. Replace it with yours in
-`src/program.rs` and `src/inputs.rs`.
+The first command needs [`cargo-generate`](https://crates.io/crates/cargo-generate) 0.21 or newer. `doctor` names
+every missing prerequisite and prints the fix. It counts a missing codesigning identity as a failure, which an
+`--unsigned` build can ignore.
+
+The generated crate proves a sample statement as it stands: knowledge of a 32-bit value pinned to a public input.
+Replace it with yours in `src/program.rs` and `src/inputs.rs`.
 
 `cargo generate` asks for the prover mode:
 
-| Mode     | Choose it when                                                    | What it costs                                                         |
-|:---------|:------------------------------------------------------------------|:----------------------------------------------------------------------|
-| `ct`     | The witness holds anything private: keys, credentials, user data. | Constant-time arithmetic. This is the default.                        |
-| `public` | Every input is public, or you are measuring throughput.           | Variable-time tables. Faster, and the running time leaks the witness. |
+- `ct` is the default. Choose it when the witness holds anything private: keys, credentials, user data. It costs
+  constant-time arithmetic.
+- `public` uses variable-time tables. Choose it when every input is public, or when you are measuring
+  throughput. It is faster, and the running time leaks the witness.
+
+---
+
+## Examples
+
+[examples/](examples/README.md) holds a complete crate with an iPhone app and an Android app around it. The apps
+sign with a key the phone made, prove an RSA-2048 or an ML-DSA-65 signature, verify the proof and report the
+time, the proof size and the peak memory.
 
 ---
 
 ## The Rust Side
 
-You edit two files.
+You edit two files:
 
-| File             | What goes there                                                        |
-|:-----------------|:-----------------------------------------------------------------------|
-| `src/inputs.rs`  | `MyInputs` and `MyOutput`, the records the app passes in and gets back |
-| `src/program.rs` | The circuit, the witness builder and the public inputs                 |
+- `src/inputs.rs` holds `MyInputs` and `MyOutput`, the records the app passes in and gets back.
+- `src/program.rs` holds the circuit, the witness builder and the public inputs.
 
 `src/lib.rs` exports them to Swift and Kotlin as one function:
 
@@ -78,6 +97,10 @@ That function already does the following:
   program.
 - The witness trace is zeroized when it is dropped.
 
+One thing it does not do: check your witness against the constraints. The prover proves the trace it is given,
+and a witness that breaks a constraint comes back as a proof that no verifier accepts. Check the inputs in
+`build_witness`, and run `hekate_sdk::preflight` on the program in your tests.
+
 Set `TRANSCRIPT_LABEL` in `src/program.rs` to a string of your own. The verifier must open its transcript with the
 same bytes.
 
@@ -90,26 +113,19 @@ same bytes.
 Checks the machine before a build fails halfway. A failed check prints the fix, and the exit code is non-zero when
 any check fails. Without an argument it checks both platforms.
 
-| Platform | Check                                                                              |
-|:---------|:-----------------------------------------------------------------------------------|
-| iOS      | Xcode Command Line Tools                                                           |
-| iOS      | Rust targets `aarch64-apple-ios` and `aarch64-apple-ios-sim`                       |
-| iOS      | `lipo` and `install_name_tool`                                                     |
-| iOS      | A codesigning identity in the keychain and `HEKATE_IOS_TEAM_ID` in the environment |
-| Android  | `ANDROID_NDK_HOME` pointing at an installed NDK                                    |
-| Android  | Rust target `aarch64-linux-android`                                                |
-| Android  | `cargo-ndk`                                                                        |
-| Android  | JDK 17 or newer                                                                    |
+- For iOS: the Xcode Command Line Tools, the Rust targets `aarch64-apple-ios` and `aarch64-apple-ios-sim`,
+  `lipo` and `install_name_tool`, a codesigning identity in the keychain and `HEKATE_IOS_TEAM_ID` in the
+  environment.
+- For Android: `ANDROID_NDK_HOME` pointing at an installed NDK, the Rust target `aarch64-linux-android`,
+  `cargo-ndk` and JDK 17 or newer.
 
 ### `cargo xtask ios-build [--unsigned]`
 
-Writes three things under `target/`, named after your crate (`my-prover` here):
+Writes three things under `target/`, named after your crate (`my-prover` here), for iOS 16 and up:
 
-| Output                                        | What it is                                            |
-|:----------------------------------------------|:------------------------------------------------------|
-| `xcframeworks/MyProver.xcframework`           | Your prover, for devices and Apple-silicon simulators |
-| `xcframeworks/HekateProverCdylib.xcframework` | The Hekate prover, same two slices                    |
-| `swift/MyProver/my_prover.swift`              | The Swift bindings the app compiles                   |
+- `xcframeworks/MyProver.xcframework` is your prover, for devices and Apple-silicon simulators.
+- `xcframeworks/HekateProverCdylib.xcframework` is the Hekate prover, with the same two slices.
+- `swift/MyProver/my_prover.swift` is the Swift bindings file the app compiles.
 
 The app embeds both frameworks: yours loads the prover's by `@rpath`. Signing uses the certificate that matches
 `HEKATE_IOS_TEAM_ID`, your 10-character Apple Developer Team ID. Without that variable the build stops; pass
@@ -120,7 +136,8 @@ The app embeds both frameworks: yours loads the prover's by `@rpath`. Signing us
 ### `cargo xtask android-build`
 
 Writes `target/aar/my-prover-release.aar`: your library, the Hekate prover library and the generated Kotlin
-bindings in one archive, for `arm64-v8a` and Android API 26 and up.
+bindings in one archive, for `arm64-v8a` and Android API 26 and up. Both libraries need the ARMv8 cryptography
+extension, and both load on devices with 16 KB pages.
 
 The bindings load the prover library before your own. That patch is pinned to the Kotlin output of `uniffi`
 0.32.2: after a `uniffi` bump the build stops with a message that names the anchor to update in
