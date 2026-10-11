@@ -52,7 +52,7 @@ jobs:
   ios-sim:
     name: iOS arm64 simulator
     needs: [sync-check]
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
