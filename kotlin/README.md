@@ -35,11 +35,11 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 dependencies {
-    implementation("dev.oumuamua.hekate:hekate:0.1.0")
+    implementation("dev.oumuamua.hekate:hekate:0.3.0")
 }
 ```
 
-`0.1.0` is the `version` in `kotlin/lib/build.gradle.kts`.
+`0.3.0` is the `version` in `kotlin/lib/build.gradle.kts`.
 
 ---
 
