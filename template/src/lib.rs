@@ -15,6 +15,16 @@ pub use inputs::{MyInputs, MyOutput};
 
 uniffi::setup_scaffolding!();
 
+#[cfg(all(
+    target_os = "android",
+    target_arch = "aarch64",
+    not(target_feature = "aes")
+))]
+compile_error!(
+    "aarch64-linux-android needs -C target-feature=+aes, set in .cargo/config.toml. \
+     Cargo ignores that file's rustflags when RUSTFLAGS is set: add the feature there."
+);
+
 #[derive(uniffi::Object)]
 pub struct CancelToken {
     inner: ProverCancelToken,
