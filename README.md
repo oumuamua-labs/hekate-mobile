@@ -1,233 +1,167 @@
 # Hekate Mobile
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache2-yellow.svg)](./LICENSE)
+[![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-blue.svg)](./LICENSE)
 
-Developer tooling that turns a Rust prover crate into a signed `.xcframework` and `.aar` carrying a typed Swift / Kotlin
-surface. Mobile teams consume one `await` call per prove with native cancellation. Zero ZK terminology leaks across the
-boundary.
+*Copyright (c) 2026 Andrei Kochergin and Oumuamua Labs.*
 
-> [!IMPORTANT]
-> Polyglot, separate from the Hekate Cargo workspace. Ships a `cargo-generate` template, an `xtask` build
-> orchestrator, and Android Gradle scaffolding. Iterates independently of the open core and closed prover's release
-> cadence.
+Prove in zero knowledge on an iPhone or an Android phone. You write the statement once in Rust, and two build
+commands turn that crate into two xcframeworks and an `.aar` with the Hekate prover inside. The app team calls one
+`async` function in Swift or one `suspend` function in Kotlin and gets a proof back, and `Task.cancel()` or
+`Job.cancel()` stops the prover.
+
+Swift and Kotlin guides: [oumuamua.dev/mobile](https://oumuamua.dev/mobile). The proof system:
+[Hekate](https://github.com/oumuamua-labs/hekate).
 
 ---
 
-## Audience and Role Boundary
+## What You Can Do
 
-Two roles. Hard line between them.
+| You are           | You do                                                                                   | You get                                                             |
+|:------------------|:-----------------------------------------------------------------------------------------|:--------------------------------------------------------------------|
+| Rust developer    | Describe the statement in `src/program.rs` and its inputs and outputs in `src/inputs.rs` | Two xcframeworks, Swift bindings and one `.aar`, ready to hand over |
+| iOS developer     | Embed the frameworks, add the bindings file, declare `MyProver`                          | `try await MyProver.prove(inputs:)`, stopped by `Task.cancel()`     |
+| Android developer | Add the `.aar` and JNA, declare `MyProver`                                               | `MyProver.prove(inputs)` in a coroutine, stopped by `Job.cancel()`  |
 
-**Rust dev.** Single human, the SDK author. Writes the `Circuit<Block128>` program + witness-gen +
-public-input encoder + the `#[uniffi::export]` surface. Runs the cross-compile + bindgen + framework-assembly
-pipeline. Ships `MyProver.xcframework` + `MyProver.aar` to the mobile team.
-
-**Mobile dev.** Swift / Kotlin engineer. Drops the artifact into Xcode / Android Studio. Calls
-`try await MyProver.prove(inputs:)`. Never sees `Air`, `ProgramWitness`, `ProgramInstance`, `Transcript`, `Block128`,
-or any ZK terminology.
-
-The Rust dev's `#[uniffi::export]` surface **is** the mobile SDK. This repo is the toolchain that builds it.
+The API the app calls is made of your own types: `MyInputs`, `MyOutput`, `CancelToken` and a typed error. No field
+element, trace or transcript appears in Swift or Kotlin. `MyProver` is a type the app declares once in a few lines;
+[swift/README.md](swift/README.md) and [kotlin/README.md](kotlin/README.md) show it, with the remaining setup on
+each platform.
 
 ---
 
 ## Quick Start
 
-Prepared machine, four commands:
-
 ```bash
-cargo generate --git <hekate-mobile-url> template --name my-prover
+cargo generate --git https://github.com/oumuamua-labs/hekate-mobile template --name my-prover
 cd my-prover
-cargo xtask doctor                                 # verify host prereqs
-# edit src/program.rs + src/inputs.rs              # replace the seam with your domain
-cargo xtask ios-build                              # → target/xcframeworks/{HekateProverCdylib,MyProver}.xcframework
+cargo xtask doctor
+cargo xtask ios-build
+cargo xtask android-build
 ```
 
-`cargo generate` prompts `prover_mode`:
+`doctor` names every missing prerequisite and prints the fix. The generated crate proves a
+sample statement as it stands: knowledge of a 32-bit value pinned to a public input. Replace it with yours in
+`src/program.rs` and `src/inputs.rs`.
 
-| Mode     | When                                              | Trade-off                                                |
-|:---------|:--------------------------------------------------|:---------------------------------------------------------|
-| `ct`     | **Default.** Private mobile witnesses.            | Constant-time arithmetic. Safe under timing observation. |
-| `public` | Public data, debug builds, throughput benchmarks. | Variable-time table-math. Faster. Leaks timing.          |
+`cargo generate` asks for the prover mode:
 
-The dev's outer crate links `hekate-prover-sys`, which pulls the signed cdylib (Ed25519 + ML-DSA-65 over the payload)
-from the Oumuamua CDN at `cargo build` time. The `xtask` then bundles that cdylib into the distribution artifact so
-the dynamic loader resolves it on-device.
+| Mode     | Choose it when                                                    | What it costs                                                         |
+|:---------|:------------------------------------------------------------------|:----------------------------------------------------------------------|
+| `ct`     | The witness holds anything private: keys, credentials, user data. | Constant-time arithmetic. This is the default.                        |
+| `public` | Every input is public, or you are measuring throughput.           | Variable-time tables. Faster, and the running time leaks the witness. |
 
 ---
 
-## The Canonical UniFFI Pattern
+## The Rust Side
 
-Lives at `template/src/lib.rs`. The Rust dev rewrites `program.rs` and `inputs.rs`; this shape stays.
+You edit two files.
+
+| File             | What goes there                                                        |
+|:-----------------|:-----------------------------------------------------------------------|
+| `src/inputs.rs`  | `MyInputs` and `MyOutput`, the records the app passes in and gets back |
+| `src/program.rs` | The circuit, the witness builder and the public inputs                 |
+
+`src/lib.rs` exports them to Swift and Kotlin as one function:
 
 ```rust
-#[derive(uniffi::Object)]
-pub struct CancelToken {
-    inner: hekate_prover_sys::CancelToken
-}
-
 #[uniffi::export]
-impl CancelToken {
-    #[uniffi::constructor]
-    pub fn new() -> Arc<Self> {
-        Arc::new(Self {
-            inner: hekate_prover_sys::CancelToken::new(),
-        })
-    }
-
-    pub fn request(&self) { self.inner.request(); }
-}
-
-#[derive(uniffi::Record)]
-pub struct MyInputs {
-    /* domain fields */
-}
-
-#[derive(uniffi::Record)]
-pub struct MyOutput {
-    pub program_id: String,
-    pub proof_bytes: Vec<u8>, /* public outputs */
-}
-
-#[derive(thiserror::Error, Debug, uniffi::Error)]
-pub enum ProveError { /* mapped from prover */ }
-
-#[uniffi::export]
-pub fn prove(inputs: MyInputs, cancel: Option<Arc<CancelToken>>) -> Result<MyOutput, ProveError> {
-    let result = catch_unwind(AssertUnwindSafe(|| {
-        let air = program::build_program()?;
-        let instance = program::instance(&inputs);
-        let witness = program::build_witness(&inputs)?;
-
-        let program_id = program_id_hex(&air)?;
-
-        let mut seed = [0u8; 32];
-        getrandom::fill(&mut seed)?;
-
-        let proof = hekate_prover_sys::prove(
-            TRANSCRIPT_LABEL,
-            &air,
-            &instance,
-            &witness,
-            &Config::default(),
-            seed,
-            cancel,
-        ).map_err(map_prover_error)?;
-
-        Ok(MyOutput::from_parts(
-            program_id,
-            hekate_sdk::serialize_proof_bytes(&proof),
-            &inputs,
-        ))
-    }));
-
-    result.unwrap_or_else(|p| Err(ProveError::Panic(panic_message(p))))
-}
+pub fn prove(inputs: MyInputs, cancel: Option<Arc<CancelToken>>) -> Result<MyOutput, ProveError>
 ```
+
+That function already does the following:
+
+- A panic in your code or in the prover comes back as `ProveError::Panic`, and the app keeps running.
+- Every proof draws a fresh 32-byte seed from the operating system.
+- `CancelToken::request()`, called from any thread, stops the prover, and `prove` returns `ProveError::Cancelled`.
+- `MyOutput` carries the program id, as 64 hex characters, next to the proof bytes. Your verifier decodes it and
+  passes it to `HekateVerifier::verify`, which rejects an id that differs from the one it computes from its own
+  program.
+- The witness trace is zeroized when it is dropped.
+
+Set `TRANSCRIPT_LABEL` in `src/program.rs` to a string of your own. The verifier must open its transcript with the
+same bytes.
 
 ---
 
-## `cargo xtask`
+## Commands
 
-```
-cargo xtask doctor                 verify host prereqs
-cargo xtask ios-build              cross-compile, wrap frameworks, bind Swift, assemble + codesign xcframeworks
-cargo xtask ios-build --unsigned   CI / dev escape hatch; refuses to silently skip signing
-cargo xtask android-build          cross-compile via cargo-ndk, bind Kotlin, bundle jniLibs, assemble .aar
-```
+### `cargo xtask doctor [ios|android]`
 
-### `doctor`
+Checks the machine before a build fails halfway. A failed check prints the fix, and the exit code is non-zero when
+any check fails. Without an argument it checks both platforms.
 
-| Check                                                                              | Failure mode                                                     |
-|:-----------------------------------------------------------------------------------|:-----------------------------------------------------------------|
-| Xcode Command Line Tools (`xcode-select`)                                          | iOS build cannot find `lipo`, `install_name_tool`, `xcodebuild`. |
-| iOS Rust targets (`aarch64-apple-ios{,-sim}`)                                      | Cross-compile fails before it starts.                            |
-| Android NDK (`ANDROID_NDK_HOME` set + path exists)                                 | Android linker wiring impossible.                                |
-| Android Rust target (`aarch64-linux-android`)                                      | Cross-compile fails before it starts.                            |
-| `cargo-ndk`                                                                        | Android linker wiring impossible.                                |
-| Mach-O tools (`lipo`, `install_name_tool`)                                         | Framework rpath / id rewrite impossible.                         |
-| Codesign identity (`security find-identity -p codesigning`) + `HEKATE_IOS_TEAM_ID` | App Store rejects unsigned xcframeworks.                         |
+| Platform | Check                                                                              |
+|:---------|:-----------------------------------------------------------------------------------|
+| iOS      | Xcode Command Line Tools                                                           |
+| iOS      | Rust targets `aarch64-apple-ios` and `aarch64-apple-ios-sim`                       |
+| iOS      | `lipo` and `install_name_tool`                                                     |
+| iOS      | A codesigning identity in the keychain and `HEKATE_IOS_TEAM_ID` in the environment |
+| Android  | `ANDROID_NDK_HOME` pointing at an installed NDK                                    |
+| Android  | Rust target `aarch64-linux-android`                                                |
+| Android  | `cargo-ndk`                                                                        |
+| Android  | JDK 17 or newer                                                                    |
 
-Non-zero exit on any failure. One-line install hint per failed check.
+### `cargo xtask ios-build [--unsigned]`
 
-### `ios-build`
+Writes three things under `target/`, named after your crate (`my-prover` here):
 
-Per slice (`aarch64-apple-ios`, `aarch64-apple-ios-sim`):
+| Output                                        | What it is                                            |
+|:----------------------------------------------|:------------------------------------------------------|
+| `xcframeworks/MyProver.xcframework`           | Your prover, for devices and Apple-silicon simulators |
+| `xcframeworks/HekateProverCdylib.xcframework` | The Hekate prover, same two slices                    |
+| `swift/MyProver/my_prover.swift`              | The Swift bindings the app compiles                   |
 
-1. `cargo build --release --target <slice>` against the live `hekate-prover-sys` manifest. Pulls the signed cdylib
-   for the matching triple from the CDN.
-2. Wrap the prover cdylib as `HekateProverCdylib.framework/` — synthetic `Info.plist`, binary renamed to drop
-   `lib`/`.dylib`, `install_name_tool -id @rpath/HekateProverCdylib.framework/HekateProverCdylib`.
-3. Wrap the dev cdylib as `<PascalCased>.framework/` with the same treatment.
-4. On the dev framework,
-   `install_name_tool -change <build-machine prover path> @rpath/HekateProverCdylib.framework/HekateProverCdylib`
-   to rewrite the `LC_LOAD_DYLIB` entry the macOS linker baked from the prover's own `LC_ID_DYLIB`. Old path read
-   dynamically via `otool -L`.
-5. Generate Swift bindings via the per-template `[[bin]] uniffi-bindgen` target, which calls
-   `uniffi::uniffi_bindgen_main()`. Pins bindgen to the template's `uniffi` crate by construction.
-6. Wire bindings into each dev framework: copy `<crate>FFI.h` → `Headers/`, rewrite UniFFI's plain `module X { ... }`
-   modulemap as `framework module X { ... }`, place at `Modules/module.modulemap`. Apple framework conventions
-   require the `framework` keyword.
-7. `xcodebuild -create-xcframework` per framework → `target/xcframeworks/{HekateProverCdylib,<Dev>}.xcframework`.
-8. `codesign --sign $HEKATE_IOS_TEAM_ID --timestamp` per xcframework. `--unsigned` skips with a warning; missing env
-   var without `--unsigned` fails fast.
+The app embeds both frameworks: yours loads the prover's by `@rpath`. Signing uses the certificate that matches
+`HEKATE_IOS_TEAM_ID`, your 10-character Apple Developer Team ID. Without that variable the build stops; pass
+`--unsigned` for CI and local runs.
 
-Two xcframeworks, not one nested. App Store processing accepts the flat layout; nested
-`Foo.framework/Frameworks/Bar.framework` is structurally allowed but fragile under Apple's pipeline.
+[swift/README.md](swift/README.md) is the iOS developer's half.
 
-### `android-build`
+### `cargo xtask android-build`
 
-Per ABI (`arm64-v8a` → `aarch64-linux-android`; additional ABIs slot into the same loop):
+Writes `target/aar/my-prover-release.aar`: your library, the Hekate prover library and the generated Kotlin
+bindings in one archive, for `arm64-v8a` and Android API 26 and up.
 
-1. `cargo ndk -t <abi> build --release -p <pkg> --lib`. `cargo-ndk` wires the NDK linker for the target triple
-   against the live `hekate-prover-sys` manifest; the build script pulls the matching signed prover cdylib from
-   the CDN.
-2. Resolve both shared objects: the dev crate's `lib<dev>.so` from
-   `target/<triple>/release/`, and `libhekate_prover_cdylib.so` from the freshest
-   `target/<triple>/release/build/hekate-prover-sys-*/out/` directory.
-3. Copy both `.so` files into `android/lib/src/main/jniLibs/<abi>/`. Both must coexist in the same ABI directory
-   — Android's dynamic loader resolves `libhekate_prover_cdylib.so` by name when the dev `.so` declares it as
-   a `NEEDED` entry.
-4. Generate Kotlin bindings via the per-template `[[bin]] uniffi-bindgen` target, pointed at the freshly built
-   dev `.so` with `--library`. Output lands under `android/lib/src/main/kotlin/uniffi/<crate>/<crate>.kt`. Pinning
-   bindgen to the template's `uniffi` crate keeps generator and runtime in lockstep by construction.
-5. Inject `System.loadLibrary("hekate_prover_cdylib")` into the generated Kotlin via a regex-anchored
-   single-shot replacement against `internal object IntegrityCheckingUniffiLib { init { Native.register(…)`. The
-   anchor is pinned to uniffi 0.31.1's codegen — if uniffi is bumped, fixture tests in `android_build.rs` fail
-   loudly and force a re-pin. The prover library loads *before* the JNA registration call, guaranteeing the dev
-   cdylib's `dlopen` of `libhekate_prover_cdylib.so` resolves against an already-mapped image rather than
-   triggering recursive lookup from a half-initialized state.
-6. `./gradlew :lib:assembleRelease --console=plain` from `android/`. Gradle packs `jniLibs/<abi>/*.so` and the
-   patched Kotlin into `android/lib/build/outputs/aar/lib-release.aar`.
-7. Copy to `target/aar/<pkg>-release.aar` for symmetry with the iOS artifact path.
+The bindings load the prover library before your own. That patch is pinned to the Kotlin output of `uniffi`
+0.31.1: after a `uniffi` bump the build stops with a message that names the anchor to update in
+`xtask/src/android_build.rs`.
 
-One `.aar` per crate, not one per ABI: AGP packs all ABIs into a single archive and the consuming app picks at
-install time.
+[kotlin/README.md](kotlin/README.md) is the Android developer's half.
 
 ---
 
-## Dependencies
+## Versions
 
-- `hekate-prover-sys` — embedded `artifacts/manifest.toml` resolves the signed cdylib from the Oumuamua CDN
-  (5 triples × `ct`/`public` variants, Ed25519 + ML-DSA-65 signed).
-- `uniffi` — pinned to a known-tested version; the per-template `uniffi-bindgen` bin keeps generator and runtime in
-  lockstep by construction.
-- `hekate-core`, `-program`, `-sdk`, `hekate-math`. Exact versions in `template/Cargo.toml`.
+`Cargo.toml` pins every Hekate crate to one exact release and `uniffi` to `0.31.1`. To move to a new Hekate
+release, change those pins together.
 
-The build-time signature check (verified in `hekate-prover-sys`'s `build.rs`) is load-bearing only at the dev's
-`cargo build`. Once the cdylib lands inside the dev's xcframework / aar, Apple notarization / Play signing cover the
-entire app bundle; original publisher signatures do not ride along.
+`hekate-prover-sys` fetches the prover binary for each target during `cargo build` and checks its SHA-256, its
+Ed25519 signature and its ML-DSA-65 signature against keys pinned in the crate. A mismatch fails the build.
+Binaries exist for iOS devices, the Apple-silicon iOS simulator and Android arm64, in both modes.
+
+Nothing on the device checks those signatures again. The binary ships inside your app and is covered by your own
+Apple and Play signing.
 
 ---
 
-## Security & Audits
+## Security
 
 > [!WARNING]
-> This implementation is currently UNAUDITED.
->
-> It is provided "AS IS" with ABSOLUTELY NO WARRANTY under the terms of the Apache 2.0 License. The authors assume
-> zero liability for any damages arising from its use in production environments.
+> Hekate Mobile has not been independently audited and may contain bugs and security flaws.
+> USE AT YOUR OWN RISK!
+
+[Soundness and Security](https://oumuamua.dev/hekate/docs/advanced/soundness-and-security) collects the guarantees
+a Hekate proof gives today and the checks that stay with you. Report a vulnerability by mail to
+<info@oumuamua.dev> and keep it out of public issues.
 
 ---
 
 ## License
 
-Apache-2.0. See [LICENSE](./LICENSE) and [NOTICE](./NOTICE).
+AGPL-3.0-only. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+Linking against the proprietary prover shared library is covered by the
+[prover linking exception](LICENSE-EXCEPTION), an additional permission under AGPL section 7.
+
+Commercial licenses are available from Oumuamua Labs <info@oumuamua.dev>. The Free, Pro and Enterprise tiers
+are compared at [oumuamua.dev/hekate/pricing](https://oumuamua.dev/hekate/pricing).

@@ -1,39 +1,27 @@
 # Hekate Kotlin
 
-Async / cancellation facade over the UniFFI-generated Kotlin bindings for Hekate Android. Maps Kotlin coroutines
-(`suspend`, `Job`, structured cancellation) onto the synchronous `prove(inputs, cancel)` C-ABI call the prover
-crate exports through UniFFI.
-
-The wrapper is one suspending extension function. Its job is two things and nothing more: hand the multi-second
-prove to a dispatcher so it does not block the calling thread, and route coroutine cancellation through the FFI
-`CancelToken` so a structured `Job.cancel()` actually reaches Rust.
-
----
-
-## Installation
-
-The `.aar` is produced by `cargo xtask android-build` (see the root README) and lives at
-`target/aar/<pkg>-release.aar`. Consume it one of two ways:
-
-**JitPack** (tag-driven, no local publish step):
+Run a Hekate proof from a coroutine with one `suspend` call, and stop it by cancelling the job.
 
 ```kotlin
-// settings.gradle.kts
-dependencyResolutionManagement {
-    repositories {
-        maven { url = uri("https://jitpack.io") }
-    }
-}
+import dev.oumuamua.hekate.prove
 
-// app/build.gradle.kts
-dependencies {
-    implementation("com.github.oumuamua-labs:hekate-mobile:0.1.0")
+viewModelScope.launch {
+    val output = MyProver.prove(MyInputs(42u))
 }
 ```
 
-**Local Maven** (for in-tree development, pre-tag iteration, or air-gapped CI):
+The blocking prover call runs on a dispatcher you choose, and `Job.cancel()` reaches the Rust prover. Requires
+Android API 26 and an `arm64-v8a` device.
+
+---
+
+## Install
+
+Publish the package to your local Maven repository. The build compiles with JDK 17 and fetches that toolchain when
+the installed JDK is another version.
 
 ```bash
+cd kotlin
 ./gradlew :lib:publishToMavenLocal
 ```
 
@@ -51,30 +39,84 @@ dependencies {
 }
 ```
 
-The `.aar` already carries both `lib<dev>.so` and `libhekate_prover_cdylib.so` under `jniLibs/<abi>/`. No
-additional native artifact needs to ride alongside.
+`0.1.0` is the `version` in `kotlin/lib/build.gradle.kts`.
 
 ---
 
-## Usage
+## Add Your Prover
+
+The Rust developer runs `cargo xtask android-build` and hands you one file, `my-prover-release.aar`, named after
+the Rust crate. It holds the generated Kotlin bindings, the developer's native library and the Hekate prover.
 
 ```kotlin
-import dev.oumuamua.hekate.prove
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-
-viewModelScope.launch {
-    val output = MyProver.prove(inputs, Dispatchers.Default)
+// app/build.gradle.kts
+dependencies {
+    implementation(files("libs/my-prover-release.aar"))
+    implementation("net.java.dev.jna:jna:5.14.0@aar")
 }
 ```
 
-`Job.cancel()` on the enclosing coroutine — including parent-driven structured cancellation, `ViewModel`
-teardown, or an explicit `cancel()` from a `CoroutineScope` — automatically calls `CancelToken.request()`
-through `suspendCancellableCoroutine.invokeOnCancellation`. Rust's prover loop polls the token at instruction
-boundaries and unwinds with `ProveError.Cancelled`. There is no manual cancel-token plumbing on the call site.
+The bindings call native code through JNA, and a file dependency brings no dependencies of its own, which is why
+JNA is declared next to it.
 
-The `dispatcher` parameter is configurable for a reason: `Dispatchers.Default` is sized to CPU cores and is
-shared with every other CPU-bound coroutine in the process. A multi-second prove pinned to `Default` starves
-that pool when several proofs run concurrently or alongside other CPU work. For batch proving or background
-flows, pass `Dispatchers.IO` (elastic) or a dedicated `newFixedThreadPoolContext("prove", n)` sized to the
-prover's parallelism budget.
+The bindings live in the package `uniffi.my_prover` and give you a function `prove(inputs, cancel)` and a
+`CancelToken` class. Declare the prover object once to make them a `HekateProver`:
+
+```kotlin
+import dev.oumuamua.hekate.CancelToken
+import dev.oumuamua.hekate.HekateProver
+import uniffi.my_prover.MyInputs
+import uniffi.my_prover.MyOutput
+
+class ProverToken : CancelToken {
+    val generated = uniffi.my_prover.CancelToken()
+
+    override fun request() {
+        generated.request()
+    }
+}
+
+object MyProver : HekateProver<MyInputs, MyOutput, ProverToken> {
+    override fun makeCancelToken() = ProverToken()
+
+    override fun prove(inputs: MyInputs, cancel: ProverToken): MyOutput =
+        uniffi.my_prover.prove(inputs, cancel.generated)
+}
+```
+
+---
+
+## Use
+
+`prove` takes a dispatcher and defaults to `Dispatchers.Default`. The proof blocks one thread of that dispatcher
+until it returns. `Default` has as many threads as the device has cores and every CPU-bound coroutine in the app
+shares it; for several proofs at once pass `Dispatchers.IO` or a pool of your own.
+
+Cancel the job that runs the proof in any way coroutines offer: a cancelled scope, a `viewModelScope` whose
+`ViewModel` is cleared, an explicit `job.cancel()`. The package calls `request()` on the token and the prover stops
+at its next poll. The coroutine then ends with `CancellationException`, as a cancelled coroutine does.
+
+```kotlin
+try {
+    val output = MyProver.prove(inputs)
+    // output.proofBytes, output.programId, output.publicValue
+} catch (e: ProveException.Panic) {
+    // Rust panicked and the app is still running
+} catch (e: ProveException) {
+    // InvalidInput, Witness or Prover
+}
+```
+
+UniFFI gives the Rust `ProveError` enum the Kotlin name `ProveException`. Its cases and the fields of `MyOutput` are
+whatever the Rust side declares; these are the template's. A panic in Rust arrives as `ProveException.Panic`
+because the template catches it before it crosses into Kotlin.
+
+---
+
+## License
+
+AGPL-3.0-only. See [LICENSE](../LICENSE) and [NOTICE](../NOTICE).
+Commercial licenses are available from Oumuamua Labs <info@oumuamua.dev>.
+
+Linking the proprietary prover shared library into an AGPL work is covered by
+[LICENSE-EXCEPTION](../LICENSE-EXCEPTION), an additional permission under AGPL section 7.
