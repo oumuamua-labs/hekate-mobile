@@ -123,7 +123,7 @@ Writes `target/aar/my-prover-release.aar`: your library, the Hekate prover libra
 bindings in one archive, for `arm64-v8a` and Android API 26 and up.
 
 The bindings load the prover library before your own. That patch is pinned to the Kotlin output of `uniffi`
-0.31.1: after a `uniffi` bump the build stops with a message that names the anchor to update in
+0.32.2: after a `uniffi` bump the build stops with a message that names the anchor to update in
 `xtask/src/android_build.rs`.
 
 [kotlin/README.md](kotlin/README.md) is the Android developer's half.
@@ -132,7 +132,7 @@ The bindings load the prover library before your own. That patch is pinned to th
 
 ## Versions
 
-`Cargo.toml` pins every Hekate crate to one exact release and `uniffi` to `0.31.1`. To move to a new Hekate
+`Cargo.toml` pins every Hekate crate to one exact release and `uniffi` to `0.32.2`. To move to a new Hekate
 release, change those pins together.
 
 `hekate-prover-sys` fetches the prover binary for each target during `cargo build` and checks its SHA-256, its

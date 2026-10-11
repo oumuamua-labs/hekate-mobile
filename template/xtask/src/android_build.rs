@@ -8,9 +8,8 @@ const PROVER_LIB_NAME: &str = "hekate_prover_cdylib";
 
 const ANDROID_ABIS: &[(&str, &str)] = &[("arm64-v8a", "aarch64-linux-android")];
 
-// Anchored to uniffi 0.31.1 Kotlin codegen, if
-// `uniffi` is bumped in Cargo.toml, regenerate
-// sample output and update this literal.
+// Anchored to uniffi 0.32.2 Kotlin codegen, if `uniffi` is bumped
+// in Cargo.toml, regenerate sample output and update this literal.
 const KOTLIN_INJECTION_ANCHOR: &str = "internal object IntegrityCheckingUniffiLib {\n    init {\n        Native.register(IntegrityCheckingUniffiLib::class.java";
 
 const KOTLIN_INJECTION_REPLACEMENT: &str = "internal object IntegrityCheckingUniffiLib {\n    init {\n        System.loadLibrary(\"hekate_prover_cdylib\")\n        Native.register(IntegrityCheckingUniffiLib::class.java";
@@ -392,7 +391,7 @@ pub fn inject_prover_load_library(text: &str) -> Result<String, String> {
     let count = text.matches(KOTLIN_INJECTION_ANCHOR).count();
     if count != 1 {
         return Err(format!(
-            "uniffi 0.31.1 Kotlin format anchor matched {count} times (expected exactly 1). \
+            "uniffi 0.32.2 Kotlin format anchor matched {count} times (expected exactly 1). \
              Verify [dependencies].uniffi pin in the template Cargo.toml and update \
              KOTLIN_INJECTION_ANCHOR in xtask/src/android_build.rs."
         ));
