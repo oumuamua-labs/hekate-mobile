@@ -52,7 +52,7 @@ the Rust crate. It holds the generated Kotlin bindings, the developer's native l
 // app/build.gradle.kts
 dependencies {
     implementation(files("libs/my-prover-release.aar"))
-    implementation("net.java.dev.jna:jna:5.14.0@aar")
+    implementation("net.java.dev.jna:jna:5.19.1@aar")
 }
 ```
 
