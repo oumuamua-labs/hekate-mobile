@@ -4,3 +4,6 @@ target/
 fuzz-*
 .claude
 .build
+xcuserdata/
+.kotlin/
+.swiftpm
