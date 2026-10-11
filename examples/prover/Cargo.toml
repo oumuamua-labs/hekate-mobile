@@ -1,0 +1,50 @@
+[workspace]
+members = ["xtask"]
+resolver = "3"
+
+[package]
+name = "signature-prover"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-only"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+name = "signature_prover"
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+
+[features]
+default = ["ct"]
+ct = ["hekate-prover-sys/ct"]
+public = ["hekate-prover-sys/public"]
+
+[dependencies]
+hekate-prover-sys = "=0.37.0"
+hekate-math = "=0.12.0"
+hekate-core = "=0.37.0"
+hekate-crypto = "=0.37.0"
+hekate-program = "=0.37.0"
+hekate-gadgets = "=0.37.0"
+hekate-sdk = "=0.37.0"
+hekate-verifier = "=0.37.0"
+hekate-sha2 = "=0.3.0"
+hekate-rsa = "=0.3.0"
+hekate-keccak = "=0.10.0"
+hekate-pqc = "=0.11.0"
+uniffi = { version = "=0.32.2", features = ["cli"] }
+thiserror = "2"
+getrandom = "0.4"
+zeroize = "1.8"
+
+[dev-dependencies]
+ml-dsa = "0.1"
+
+[profile.release]
+panic = "unwind"
+opt-level = 3
+lto = "thin"
+codegen-units = 1

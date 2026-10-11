@@ -1,0 +1,6 @@
+.gradle/
+.kotlin/
+build/
+local.properties
+lib/src/main/jniLibs/
+lib/src/main/kotlin/uniffi/
