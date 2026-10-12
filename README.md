@@ -19,6 +19,22 @@ Swift and Kotlin guides: [oumuamua.dev/mobile](https://oumuamua.dev/mobile). The
 
 ---
 
+## Measured On iPhones
+
+On-device proving, measured on real phones. These are the two example proofs with zero knowledge on:
+
+| Proof                                | Phone                         |  Prove | Verify |         Proof size |
+|:-------------------------------------|:------------------------------|-------:|-------:|-------------------:|
+| ML-DSA-65, key in the Secure Enclave | iPhone 14 Pro Max, iOS 26.7.1 | 1.34 s |  26 ms |          1,577 KiB |
+| RSA-2048 PKCS#1 v1.5                 | iPhone 14 Pro Max, iOS 26.7.1 | 485 ms |  21 ms | 1,808 to 1,814 KiB |
+| RSA-2048 PKCS#1 v1.5                 | iPhone 11 Pro Max, iOS 18.6.2 | 832 ms |  34 ms | 1,811 to 1,815 KiB |
+
+Each figure is the best of three proofs with the phone on battery, the signed `ct` prover 0.15.0 and hekate
+0.37.0. The apps in [examples/](examples/README.md) signed with keys the phones made and reported these numbers.
+That README says what each row of the report means and how to run the apps on your own phone.
+
+---
+
 ## What You Can Do
 
 The work splits into three roles, and each has one job:
