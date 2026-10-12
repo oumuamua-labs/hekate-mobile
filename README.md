@@ -113,9 +113,8 @@ same bytes.
 Checks the machine before a build fails halfway. A failed check prints the fix, and the exit code is non-zero when
 any check fails. Without an argument it checks both platforms.
 
-- For iOS: the Xcode Command Line Tools, the Rust targets `aarch64-apple-ios` and `aarch64-apple-ios-sim`,
-  `lipo` and `install_name_tool`, a codesigning identity in the keychain and `HEKATE_IOS_TEAM_ID` in the
-  environment.
+- For iOS: Xcode with the iOS SDK and its license accepted, the Rust targets `aarch64-apple-ios` and
+  `aarch64-apple-ios-sim`, a codesigning identity in the keychain and `HEKATE_IOS_TEAM_ID` in the environment.
 - For Android: `ANDROID_NDK_HOME` pointing at an installed NDK, the Rust target `aarch64-linux-android`,
   `cargo-ndk` and JDK 17 or newer.
 

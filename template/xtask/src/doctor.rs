@@ -21,12 +21,7 @@ struct Check {
 }
 
 pub fn run(filter: Option<Platform>) -> ExitCode {
-    let ios = [
-        xcode_clt(),
-        ios_targets(),
-        macho_tools(),
-        codesign_identity(),
-    ];
+    let ios = [xcode_ios_sdk(), ios_targets(), codesign_identity()];
 
     let android = [android_ndk(), android_targets(), cargo_ndk(), jdk()];
 
@@ -85,18 +80,38 @@ fn report(label: &str, checks: &[Check]) -> bool {
     fails == 0
 }
 
-fn xcode_clt() -> Check {
-    let name = "Xcode Command Line Tools";
-    match Command::new("xcode-select").arg("-p").output() {
+fn xcode_ios_sdk() -> Check {
+    let name = "Xcode with the iOS SDK";
+    let fix = "install Xcode, select it via `sudo xcode-select -s /Applications/Xcode.app` \
+               and accept its license via `sudo xcodebuild -license`";
+
+    let probe = Command::new("xcrun")
+        .args(["--sdk", "iphoneos", "--show-sdk-path"])
+        .output();
+
+    match probe {
         Ok(o) if o.status.success() => Check {
             name,
             status: Status::Ok,
         },
-        _ => Check {
+        Ok(o) => {
+            let stderr = String::from_utf8_lossy(&o.stderr);
+            let reason = stderr
+                .lines()
+                .map(str::trim)
+                .find(|line| !line.is_empty())
+                .unwrap_or("no error output");
+
+            Check {
+                name,
+                status: Status::Fail(format!(
+                    "`xcrun --sdk iphoneos --show-sdk-path` failed: {reason}; {fix}"
+                )),
+            }
+        }
+        Err(e) => Check {
             name,
-            status: Status::Fail(
-                "install via `xcode-select --install` (or full Xcode from the App Store)".into(),
-            ),
+            status: Status::Fail(format!("could not run `xcrun`: {e}; {fix}")),
         },
     }
 }
@@ -260,38 +275,6 @@ fn parse_javac_major(s: &str) -> Option<u32> {
     match first {
         1 => parts.next()?.parse().ok(),
         n => Some(n),
-    }
-}
-
-fn macho_tools() -> Check {
-    let name = "Mach-O tools (lipo + install_name_tool)";
-
-    let mut missing = Vec::new();
-    for tool in ["lipo", "install_name_tool"] {
-        let on_path = Command::new("which")
-            .arg(tool)
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false);
-
-        if !on_path {
-            missing.push(tool);
-        }
-    }
-
-    if missing.is_empty() {
-        Check {
-            name,
-            status: Status::Ok,
-        }
-    } else {
-        Check {
-            name,
-            status: Status::Fail(format!(
-                "missing: {} — install Xcode CLT via `xcode-select --install`",
-                missing.join(", ")
-            )),
-        }
     }
 }
 
