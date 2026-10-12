@@ -88,7 +88,7 @@ proved by `hekate-pqc`.
 
 ### Proof size
 
-A proof is 1,808 to 1,816 KiB for RSA-2048 and 1,578 to 1,580 KiB for ML-DSA-65. For scale, an ML-DSA-65
+A proof is 1,806 to 1,816 KiB for RSA-2048 and 1,572 to 1,580 KiB for ML-DSA-65. For scale, an ML-DSA-65
 signature is 3,309 bytes.
 
 Measured on the signed `ct` cdylib 0.15.0 with hekate 0.37.0 and `Config::default()`, zero knowledge on, on an
@@ -134,8 +134,9 @@ No private key reaches Rust. The witness is the signature, and the report names 
 
 On an iPhone the RSA key is a permanent Keychain item made by `SecKeyCreateRandomKey`; the Secure Enclave does
 not hold RSA keys. The ML-DSA key is made by `SecureEnclave.MLDSA65` and stays in the Secure Enclave, and the
-Keychain keeps its opaque blob. A simulator has no Secure Enclave: there CryptoKit makes a software key and the
-Keychain keeps its seed.
+Keychain keeps its opaque blob. The iOS 27.0 simulator on an Apple M3 Max reports a Secure Enclave, and the app
+uses it there too. Where `SecureEnclave.isAvailable` is false, CryptoKit makes a software key and the Keychain
+keeps its seed.
 
 On Android the RSA key is in the Android Keystore, and the report gives its security level. The ML-DSA key is in
 the Keystore too when the device can make it. When it cannot, as on an emulator whose KeyMint has no ML-DSA, the
@@ -202,12 +203,13 @@ is a signature CryptoKit made on a Mac.
 
 Each app has three tests that drive it through its screen. One per statement expects three verified proofs, and
 one taps *Cancel* during a run. The ML-DSA test is skipped where the app cannot sign ML-DSA. Build the
-frameworks or the `.aar` first; the Android tests need a device or an emulator attached.
+frameworks or the `.aar` first; the Android tests need a device or an emulator attached. The iOS command names a
+simulator: replace `iPhone 17` with one your Xcode has, which `xcrun simctl list devices available` lists.
 
 ```bash
 cd examples/ios
 xcodebuild test -project SignatureExample.xcodeproj -scheme SignatureExample \
-    -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+    -destination 'platform=iOS Simulator,name=iPhone 17'
 
 cd examples/android
 ./gradlew :app:connectedDebugAndroidTest
