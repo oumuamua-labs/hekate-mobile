@@ -21,16 +21,21 @@ Swift and Kotlin guides: [oumuamua.dev/mobile](https://oumuamua.dev/mobile). The
 
 ## Measured On iPhones
 
-On-device proving, measured on real phones. These are the two example proofs with zero knowledge on:
+On-device proving, measured on real phones. These are proofs from the example apps with zero knowledge on:
 
-| Proof                                | Phone                         |  Prove | Verify |         Proof size |
-|:-------------------------------------|:------------------------------|-------:|-------:|-------------------:|
-| ML-DSA-65, key in the Secure Enclave | iPhone 14 Pro Max, iOS 26.7.1 | 1.34 s |  26 ms |          1,577 KiB |
-| RSA-2048 PKCS#1 v1.5                 | iPhone 14 Pro Max, iOS 26.7.1 | 485 ms |  21 ms | 1,808 to 1,814 KiB |
-| RSA-2048 PKCS#1 v1.5                 | iPhone 11 Pro Max, iOS 18.6.2 | 832 ms |  34 ms | 1,811 to 1,815 KiB |
+| Proof                                | Phone                         |  Prove | Verify |         Proof size | Peak memory |
+|:-------------------------------------|:------------------------------|-------:|-------:|-------------------:|------------:|
+| ML-DSA-65, key in the Secure Enclave | iPhone 14 Pro Max, iOS 26.7.1 | 1.34 s |  26 ms |          1,577 KiB |     156 MiB |
+| RSA-2048 PKCS#1 v1.5                 | iPhone 14 Pro Max, iOS 26.7.1 | 485 ms |  21 ms | 1,808 to 1,814 KiB |     252 MiB |
+| RSA-2048 PKCS#1 v1.5                 | iPhone 11 Pro Max, iOS 18.6.2 | 832 ms |  34 ms | 1,811 to 1,815 KiB |     187 MiB |
+| Keccak-256 of a 1 KiB message        | iPhone 14 Pro Max, iOS 26.7.1 |  59 ms | 5.3 ms |     353 to 357 KiB |      46 MiB |
+| Keccak-256 of a 174 KiB message      | iPhone 14 Pro Max, iOS 26.7.1 | 770 ms | 8.8 ms |     858 to 863 KiB |     120 MiB |
+| Keccak-256 of a 5.44 MiB message     | iPhone 14 Pro Max, iOS 26.7.1 | 26.7 s |  28 ms | 3,529 to 3,531 KiB |   1,852 MiB |
+| SHA-256 of a 1 KiB message           | iPhone 14 Pro Max, iOS 26.7.1 |  72 ms | 6.5 ms |     439 to 441 KiB |      56 MiB |
+| SHA-256 of a 127.9 KiB message       | iPhone 14 Pro Max, iOS 26.7.1 | 1.03 s |  10 ms |          1,034 KiB |     140 MiB |
 
-Each figure is the best of three proofs with the phone on battery, the signed `ct` prover 0.15.0 and hekate
-0.37.0. The apps in [examples/](examples/README.md) signed with keys the phones made and reported these numbers.
+Each figure is the best of three proofs with the signed `ct` prover 0.15.0 and hekate 0.37.0, on battery except
+the SHA-256 rows, which ran on the charger. The apps in [examples/](examples/README.md) reported these numbers.
 That README says what each row of the report means and how to run the apps on your own phone.
 
 ---
@@ -84,8 +89,8 @@ Replace it with yours in `src/program.rs` and `src/inputs.rs`.
 ## Examples
 
 [examples/](examples/README.md) holds a complete crate with an iPhone app and an Android app around it. The apps
-sign with a key the phone made, prove an RSA-2048 or an ML-DSA-65 signature, verify the proof and report the
-time, the proof size and the peak memory.
+prove an RSA-2048 or an ML-DSA-65 signature made with a key the phone holds, or a Keccak-256 or SHA-256 hash of
+a message, verify the proof and report the time, the proof size and the peak memory.
 
 ---
 
@@ -177,10 +182,6 @@ Apple and Play signing.
 ---
 
 ## Security
-
-> [!WARNING]
-> Hekate Mobile has not been independently audited and may contain bugs and security flaws.
-> USE AT YOUR OWN RISK!
 
 [Soundness and Security](https://oumuamua.dev/hekate/docs/advanced/soundness-and-security) collects the guarantees
 a Hekate proof gives today and the checks that stay with you. Report a vulnerability by mail to
