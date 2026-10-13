@@ -2,8 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Oumuamua Labs <info@oumuamua.dev>
 // SPDX-License-Identifier: AGPL-3.0-only
 
+mod keccak;
 mod mldsa;
 mod rsa;
+mod sha256;
 
 use hekate_core::config::Config;
 use hekate_crypto::DefaultHasher;
@@ -23,6 +25,8 @@ use zeroize::Zeroizing;
 
 type F = Block128;
 type H = DefaultHasher;
+
+const MIN_NUM_VARS: usize = 8;
 
 uniffi::setup_scaffolding!();
 
