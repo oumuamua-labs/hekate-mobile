@@ -3,7 +3,7 @@
 
     <application
         android:allowBackup="false"
-        android:label="Hekate Signatures"
+        android:label="Hekate Examples"
         android:theme="@android:style/Theme.DeviceDefault.DayNight">
 
         <activity

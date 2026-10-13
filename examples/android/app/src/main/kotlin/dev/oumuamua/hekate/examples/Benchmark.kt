@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Oumuamua Labs <info@oumuamua.dev>
 // SPDX-License-Identifier: AGPL-3.0-only
 
-package dev.oumuamua.hekate.examples.signatures
+package dev.oumuamua.hekate.examples
 
 import dev.oumuamua.hekate.prove
 import java.security.SecureRandom
@@ -26,16 +26,25 @@ object Benchmark {
 
     private const val CHALLENGE_BYTES = 32
 
-    suspend fun measure(statement: Statement, onRun: (Int) -> Unit): Measurement =
+    suspend fun measure(
+        statement: Statement,
+        inputSize: InputSize?,
+        onRun: (Int) -> Unit,
+    ): Measurement =
         withContext(Dispatchers.Default) {
             when (statement) {
                 Statement.RSA -> measure(RsaSession(), onRun)
                 Statement.ML_DSA -> measure(MlDsaSession(), onRun)
+                Statement.KECCAK -> measure(KeccakSession(messageBytes(statement, inputSize)), onRun)
+                Statement.SHA256 -> measure(Sha256Session(messageBytes(statement, inputSize)), onRun)
             }
         }
 
+    private fun messageBytes(statement: Statement, inputSize: InputSize?): Int =
+        requireNotNull(inputSize) { "Choose an input size for ${statement.title}." }.bytes
+
     private suspend fun <Inputs> measure(
-        session: SignatureSession<Inputs>,
+        session: StatementSession<Inputs>,
         onRun: (Int) -> Unit,
     ): Measurement {
         val random = SecureRandom()
@@ -44,7 +53,7 @@ object Benchmark {
             withContext(Dispatchers.Main) { onRun(run) }
 
             val challenge = ByteArray(CHALLENGE_BYTES).also(random::nextBytes)
-            val inputs = session.sign(challenge)
+            val inputs = session.inputs(challenge)
 
             val callStart = System.nanoTime()
 

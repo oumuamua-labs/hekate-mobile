@@ -2,29 +2,35 @@
 // SPDX-FileCopyrightText: 2026 Oumuamua Labs <info@oumuamua.dev>
 // SPDX-License-Identifier: AGPL-3.0-only
 
-package dev.oumuamua.hekate.examples.signatures
+package dev.oumuamua.hekate.examples
 
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.RadioGroup
+import android.widget.Spinner
 import android.widget.TextView
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import uniffi.signature_prover.proverBuild
+import uniffi.example_prover.proverBuild
 
 class MainActivity : Activity() {
     private val scope = MainScope()
 
     private var statement = Statement.RSA
+    private var sizes: List<InputSize> = emptyList()
+    private var inputSize: InputSize? = null
     private var job: Job? = null
 
     private lateinit var statements: RadioGroup
+    private lateinit var inputSizes: Spinner
     private lateinit var claim: TextView
     private lateinit var run: Button
     private lateinit var cancel: Button
@@ -37,6 +43,7 @@ class MainActivity : Activity() {
         setContentView(R.layout.main)
 
         statements = findViewById(R.id.statement)
+        inputSizes = findViewById(R.id.input_size)
         claim = findViewById(R.id.claim)
         run = findViewById(R.id.run)
         cancel = findViewById(R.id.cancel)
@@ -47,10 +54,22 @@ class MainActivity : Activity() {
         statements.setOnCheckedChangeListener { _, checked ->
             statement = when (checked) {
                 R.id.statement_mldsa -> Statement.ML_DSA
+                R.id.statement_keccak -> Statement.KECCAK
+                R.id.statement_sha256 -> Statement.SHA256
                 else -> Statement.RSA
             }
 
             showStatement()
+        }
+
+        inputSizes.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                inputSize = sizes.getOrNull(position)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                inputSize = null
+            }
         }
 
         run.setOnClickListener { start() }
@@ -68,6 +87,16 @@ class MainActivity : Activity() {
     private fun showStatement() {
         val reason = statement.unavailableReason()
 
+        sizes = statement.inputSizes()
+        inputSize = sizes.firstOrNull()
+
+        inputSizes.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            sizes.map(InputSize::label),
+        )
+        inputSizes.visibility = if (sizes.isEmpty()) View.GONE else View.VISIBLE
+
         claim.text = "${statement.claim}\n\nPublic: ${statement.publicValues}\nHidden: ${statement.hiddenValues}"
         run.isEnabled = reason == null
         status.text = reason.orEmpty()
@@ -77,15 +106,16 @@ class MainActivity : Activity() {
 
     private fun start() {
         val statement = statement
+        val inputSize = inputSize
 
         showRunning(true)
-        status.text = "Preparing the key"
+        status.text = "Preparing"
         report.text = ""
         share.visibility = View.GONE
 
         job = scope.launch {
             try {
-                val result = measure(statement)
+                val result = measure(statement, inputSize)
 
                 status.text = result.verdict
                 report.text = result.text
@@ -104,16 +134,17 @@ class MainActivity : Activity() {
         }
     }
 
-    private suspend fun measure(statement: Statement): Report {
+    private suspend fun measure(statement: Statement, inputSize: InputSize?): Report {
         val before = DeviceConditions.current(this)
         val memoryBefore = Memory.read()
 
-        val measurement = Benchmark.measure(statement) { run ->
+        val measurement = Benchmark.measure(statement, inputSize) { run ->
             status.text = "Proof $run of ${Benchmark.RUNS}"
         }
 
         return Report(
             statement = statement,
+            inputSize = inputSize,
             before = before,
             thermalStatusAfter = DeviceConditions.currentThermalStatus(this),
             hekateVersion = BuildConfig.HEKATE_VERSION,
@@ -127,6 +158,7 @@ class MainActivity : Activity() {
     private fun showRunning(running: Boolean) {
         run.visibility = if (running) View.GONE else View.VISIBLE
         cancel.visibility = if (running) View.VISIBLE else View.GONE
+        inputSizes.isEnabled = !running
 
         for (index in 0 until statements.childCount) {
             statements.getChildAt(index).isEnabled = !running

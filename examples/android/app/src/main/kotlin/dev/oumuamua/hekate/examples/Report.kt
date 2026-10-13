@@ -2,14 +2,15 @@
 // SPDX-FileCopyrightText: 2026 Oumuamua Labs <info@oumuamua.dev>
 // SPDX-License-Identifier: AGPL-3.0-only
 
-package dev.oumuamua.hekate.examples.signatures
+package dev.oumuamua.hekate.examples
 
 import java.time.Duration
 import java.util.Locale
-import uniffi.signature_prover.ProverBuild
+import uniffi.example_prover.ProverBuild
 
 data class Report(
     val statement: Statement,
+    val inputSize: InputSize?,
     val before: DeviceConditions,
     val thermalStatusAfter: String,
     val hekateVersion: String,
@@ -26,6 +27,7 @@ data class Report(
 
     private fun rows(): List<Pair<String, String>> = listOf(
         "Statement" to statement.title,
+        "Input" to (inputSize?.label ?: "a 32-byte challenge"),
         "Witness" to milliseconds(Sample::witness),
         "Prove" to milliseconds(Sample::prove),
         "Whole call" to milliseconds(Sample::wholeCall),

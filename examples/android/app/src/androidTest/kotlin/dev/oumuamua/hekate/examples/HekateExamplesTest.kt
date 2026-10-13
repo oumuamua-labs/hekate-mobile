@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Oumuamua Labs <info@oumuamua.dev>
 // SPDX-License-Identifier: AGPL-3.0-only
 
-package dev.oumuamua.hekate.examples.signatures
+package dev.oumuamua.hekate.examples
 
 import android.content.Intent
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -14,13 +14,14 @@ import androidx.test.uiautomator.Until
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class SignatureExampleTest {
+class HekateExamplesTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val device = UiDevice.getInstance(instrumentation)
     private val app = instrumentation.targetContext.packageName
@@ -52,6 +53,31 @@ class SignatureExampleTest {
         assumeTrue(view("status").text.orEmpty(), run.isEnabled)
 
         runAndExpectThreeVerifiedProofs(reportName = "ml-dsa")
+    }
+
+    @Test
+    fun keccakPreimageProvesAndVerifies() {
+        view("statement_keccak").click()
+
+        runAndExpectThreeVerifiedProofs(reportName = "keccak")
+    }
+
+    @Test
+    fun sha256PreimageOfChosenSizeProvesAndVerifies() {
+        view("statement_sha256").click()
+        view("input_size").click()
+
+        val size = device.wait(Until.findObject(By.text("256 B")), 10_000)
+
+        assertNotNull("the size list has no 256 B", size)
+        size.click()
+
+        runAndExpectThreeVerifiedProofs(reportName = "sha256")
+
+        assertTrue(
+            "the report does not name the chosen size",
+            view("report").text.contains("Input: 256 B"),
+        )
     }
 
     @Test

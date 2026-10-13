@@ -14,7 +14,7 @@
             android:id="@+id/statement"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:orientation="vertical">
 
             <RadioButton
                 android:id="@+id/statement_rsa"
@@ -27,9 +27,27 @@
                 android:id="@+id/statement_mldsa"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
                 android:text="ML-DSA-65" />
+
+            <RadioButton
+                android:id="@+id/statement_keccak"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Keccak-256" />
+
+            <RadioButton
+                android:id="@+id/statement_sha256"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SHA-256" />
         </RadioGroup>
+
+        <Spinner
+            android:id="@+id/input_size"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/claim"
@@ -43,7 +61,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="Sign, prove and verify" />
+            android:text="Prove and verify" />
 
         <Button
             android:id="@+id/cancel"

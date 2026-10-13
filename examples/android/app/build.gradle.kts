@@ -16,11 +16,11 @@ val hekateVersion = Regex("""hekate-prover-sys\s*=\s*"=?([0-9][0-9A-Za-z.+-]*)""
     ?: error("no hekate-prover-sys version in $proverManifest")
 
 android {
-    namespace = "dev.oumuamua.hekate.examples.signatures"
+    namespace = "dev.oumuamua.hekate.examples"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "dev.oumuamua.hekate.examples.signatures"
+        applicationId = "dev.oumuamua.hekate.examples"
         minSdk = 31
         targetSdk = 34
         versionCode = 1
@@ -50,7 +50,7 @@ android {
 
 dependencies {
     implementation("dev.oumuamua.hekate:hekate:0.3.0")
-    implementation(files("../../prover/target/aar/signature-prover-release.aar"))
+    implementation(files("../../prover/target/aar/example-prover-release.aar"))
     implementation("net.java.dev.jna:jna:5.19.1@aar")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 

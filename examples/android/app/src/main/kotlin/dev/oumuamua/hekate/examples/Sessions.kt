@@ -2,17 +2,20 @@
 // SPDX-FileCopyrightText: 2026 Oumuamua Labs <info@oumuamua.dev>
 // SPDX-License-Identifier: AGPL-3.0-only
 
-package dev.oumuamua.hekate.examples.signatures
+package dev.oumuamua.hekate.examples
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyInfo
 import android.security.keystore.KeyProperties
 import android.util.Log
 import dev.oumuamua.hekate.HekateProver
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.security.PrivateKey
 import java.security.ProviderException
@@ -22,28 +25,91 @@ import java.security.Signature
 import java.security.interfaces.RSAPublicKey
 import java.security.spec.RSAKeyGenParameterSpec
 import java.time.Duration
-import uniffi.signature_prover.MlDsaInputs
-import uniffi.signature_prover.Proof
-import uniffi.signature_prover.RsaInputs
-import uniffi.signature_prover.mldsaKeyHash
-import uniffi.signature_prover.verifyMldsa
-import uniffi.signature_prover.verifyRsa
+import uniffi.example_prover.MlDsaInputs
+import uniffi.example_prover.Proof
+import uniffi.example_prover.RsaInputs
+import uniffi.example_prover.keccak256
+import uniffi.example_prover.mldsaKeyHash
+import uniffi.example_prover.verifyKeccak
+import uniffi.example_prover.verifyMldsa
+import uniffi.example_prover.verifyRsa
+import uniffi.example_prover.verifySha256
 
 private const val KEYSTORE = "AndroidKeyStore"
-private const val LOG_TAG = "HekateSignatures"
+private const val LOG_TAG = "HekateExamples"
 
 class SignerException(message: String) : Exception(message)
 
-interface SignatureSession<Inputs> {
+object Message {
+    private const val DIGEST = "SHA-256"
+
+    fun expand(seed: ByteArray, count: Int): ByteArray {
+        val sha = MessageDigest.getInstance(DIGEST)
+        val counter = ByteBuffer.allocate(Long.SIZE_BYTES).order(ByteOrder.LITTLE_ENDIAN)
+        val message = ByteArray(count)
+
+        var offset = 0
+        var index = 0L
+
+        while (offset < count) {
+            sha.update(seed)
+            sha.update(counter.putLong(0, index).array())
+
+            val block = sha.digest()
+            val take = minOf(block.size, count - offset)
+
+            block.copyInto(message, offset, 0, take)
+
+            offset += take
+            index += 1
+        }
+
+        return message
+    }
+
+    fun sha256(message: ByteArray): ByteArray = MessageDigest.getInstance(DIGEST).digest(message)
+}
+
+interface StatementSession<Inputs> {
     val prover: HekateProver<Inputs, Proof, ProverToken>
     val keyStorage: String
 
-    fun sign(challenge: ByteArray): Inputs
+    fun inputs(challenge: ByteArray): Inputs
 
     fun verify(proof: Proof, challenge: ByteArray): Duration
 }
 
-class RsaSession : SignatureSession<RsaInputs> {
+class KeccakSession(private val messageBytes: Int) : StatementSession<ByteArray> {
+    override val prover = KeccakProver
+    override val keyStorage = "none, the witness is a message"
+
+    override fun inputs(challenge: ByteArray): ByteArray = Message.expand(challenge, messageBytes)
+
+    override fun verify(proof: Proof, challenge: ByteArray): Duration =
+        verifyKeccak(
+            proof.programId,
+            proof.proofBytes,
+            keccak256(Message.expand(challenge, messageBytes)),
+            messageBytes.toULong(),
+        )
+}
+
+class Sha256Session(private val messageBytes: Int) : StatementSession<ByteArray> {
+    override val prover = Sha256Prover
+    override val keyStorage = "none, the witness is a message"
+
+    override fun inputs(challenge: ByteArray): ByteArray = Message.expand(challenge, messageBytes)
+
+    override fun verify(proof: Proof, challenge: ByteArray): Duration =
+        verifySha256(
+            proof.programId,
+            proof.proofBytes,
+            Message.sha256(Message.expand(challenge, messageBytes)),
+            messageBytes.toULong(),
+        )
+}
+
+class RsaSession : StatementSession<RsaInputs> {
     override val prover = RsaProver
     override val keyStorage: String
 
@@ -64,7 +130,7 @@ class RsaSession : SignatureSession<RsaInputs> {
         keyStorage = "Keystore, ${securityLevel(key)}"
     }
 
-    override fun sign(challenge: ByteArray): RsaInputs {
+    override fun inputs(challenge: ByteArray): RsaInputs {
         val signature = Signature.getInstance("SHA256withRSA").run {
             initSign(key)
             update(challenge)
@@ -104,7 +170,7 @@ class RsaSession : SignatureSession<RsaInputs> {
     }
 }
 
-class MlDsaSession : SignatureSession<MlDsaInputs> {
+class MlDsaSession : StatementSession<MlDsaInputs> {
     override val prover = MlDsaProver
     override val keyStorage: String
 
@@ -127,7 +193,7 @@ class MlDsaSession : SignatureSession<MlDsaInputs> {
         }
     }
 
-    override fun sign(challenge: ByteArray): MlDsaInputs {
+    override fun inputs(challenge: ByteArray): MlDsaInputs {
         val signature = Signature.getInstance(ALGORITHM).run {
             initSign(key)
             update(challenge)
