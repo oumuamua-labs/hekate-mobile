@@ -507,6 +507,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-prover"
+version = "0.1.0"
+dependencies = [
+ "getrandom 0.4.3",
+ "hekate-core",
+ "hekate-crypto",
+ "hekate-gadgets",
+ "hekate-keccak",
+ "hekate-math",
+ "hekate-pqc",
+ "hekate-program",
+ "hekate-prover-sys",
+ "hekate-rsa",
+ "hekate-sdk",
+ "hekate-sha2",
+ "hekate-verifier",
+ "ml-dsa",
+ "thiserror",
+ "uniffi",
+ "zeroize",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1270,29 +1293,6 @@ checksum = "28d567dcbaf0049cb8ac2608a76cd95ff9e4412e1899d389ee400918ca7537f5"
 dependencies = [
  "digest 0.11.3",
  "rand_core 0.10.1",
-]
-
-[[package]]
-name = "signature-prover"
-version = "0.1.0"
-dependencies = [
- "getrandom 0.4.3",
- "hekate-core",
- "hekate-crypto",
- "hekate-gadgets",
- "hekate-keccak",
- "hekate-math",
- "hekate-pqc",
- "hekate-program",
- "hekate-prover-sys",
- "hekate-rsa",
- "hekate-sdk",
- "hekate-sha2",
- "hekate-verifier",
- "ml-dsa",
- "thiserror",
- "uniffi",
- "zeroize",
 ]
 
 [[package]]

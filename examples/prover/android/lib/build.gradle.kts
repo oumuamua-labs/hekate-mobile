@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.oumuamua.hekate.signature_prover"
+    namespace = "dev.oumuamua.hekate.example_prover"
     compileSdk = 34
 
     defaultConfig {

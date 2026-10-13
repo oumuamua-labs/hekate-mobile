@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "signature-prover"
+rootProject.name = "example-prover"
 include(":lib")
