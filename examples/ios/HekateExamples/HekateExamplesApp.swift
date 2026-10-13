@@ -5,7 +5,7 @@
 import SwiftUI
 
 @main
-struct SignatureExampleApp: App {
+struct HekateExamplesApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

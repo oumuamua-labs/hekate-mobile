@@ -23,6 +23,13 @@ final class RunModel: ObservableObject {
     }
 
     @Published var statement: Statement = .rsa {
+        didSet {
+            inputSize = statement.inputSizes.first
+            phase = .idle
+        }
+    }
+
+    @Published var inputSize: InputSize? {
         didSet { phase = .idle }
     }
 
@@ -41,12 +48,13 @@ final class RunModel: ObservableObject {
 
     func start() {
         let statement = statement
+        let inputSize = inputSize
 
-        phase = .running("Preparing the key")
+        phase = .running("Preparing")
 
         task = Task {
             do {
-                phase = .finished(try await measure(statement))
+                phase = .finished(try await measure(statement, inputSize: inputSize))
             } catch ProveError.Cancelled {
                 phase = .cancelled
             } catch {
@@ -59,17 +67,18 @@ final class RunModel: ObservableObject {
         task?.cancel()
     }
 
-    private func measure(_ statement: Statement) async throws -> Report {
+    private func measure(_ statement: Statement, inputSize: InputSize?) async throws -> Report {
         let hekateVersion = try Self.hekateVersion()
         let before = DeviceConditions.current()
         let footprintBefore = try Footprint.read()
 
-        let measurement = try await Benchmark.measure(statement) { [weak self] run in
+        let measurement = try await Benchmark.measure(statement, inputSize: inputSize) { [weak self] run in
             self?.phase = .running("Proof \(run) of \(Benchmark.runs)")
         }
 
         return Report(
             statement: statement,
+            inputSize: inputSize,
             before: before,
             thermalStateAfter: DeviceConditions.currentThermalState(),
             hekateVersion: hekateVersion,

@@ -26,12 +26,19 @@ enum Benchmark {
 
     static func measure(
         _ statement: Statement,
+        inputSize: InputSize?,
         onRun: @MainActor @Sendable (Int) -> Void
     ) async throws -> Measurement {
-        switch statement {
-        case .rsa:
+        switch (statement, inputSize) {
+        case (.keccak, let size?):
+            return try await measure(with: KeccakSession(messageBytes: size.bytes), onRun: onRun)
+        case (.sha256, let size?):
+            return try await measure(with: Sha256Session(messageBytes: size.bytes), onRun: onRun)
+        case (.keccak, nil), (.sha256, nil):
+            throw StatementUnavailable(reason: "Choose an input size for \(statement.rawValue).")
+        case (.rsa, _):
             return try await measure(with: RsaSession(), onRun: onRun)
-        case .mlDsa:
+        case (.mlDsa, _):
             #if compiler(>=6.2)
             if #available(iOS 26.0, *) {
                 return try await measure(with: MlDsaSession(), onRun: onRun)
@@ -42,7 +49,7 @@ enum Benchmark {
         }
     }
 
-    private static func measure<Session: SignatureSession>(
+    private static func measure<Session: StatementSession>(
         with session: Session,
         onRun: @MainActor @Sendable (Int) -> Void
     ) async throws -> Measurement {
@@ -52,7 +59,7 @@ enum Benchmark {
             await onRun(run)
 
             let challenge = Data((0..<challengeBytes).map { _ in UInt8.random(in: .min ... .max) })
-            let inputs = try session.sign(challenge)
+            let inputs = try session.inputs(for: challenge)
 
             let callStart = ProcessInfo.processInfo.systemUptime
 

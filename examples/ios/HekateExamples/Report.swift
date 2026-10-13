@@ -13,6 +13,7 @@ struct Report: Sendable {
     }
 
     let statement: Statement
+    let inputSize: InputSize?
     let before: DeviceConditions
     let thermalStateAfter: String
     let hekateVersion: String
@@ -28,6 +29,7 @@ struct Report: Sendable {
     var rows: [Row] {
         [
             Row(label: "Statement", value: statement.title),
+            Row(label: "Input", value: inputSize?.label ?? "a 32-byte challenge"),
             Row(label: "Witness", value: milliseconds(\.witness)),
             Row(label: "Prove", value: milliseconds(\.prove)),
             Row(label: "Whole call", value: milliseconds(\.wholeCall)),

@@ -21,7 +21,7 @@ enum KeychainError: LocalizedError {
 }
 
 enum KeychainBlob {
-    private static let service = "dev.oumuamua.hekate.examples.signatures"
+    private static let service = "dev.oumuamua.hekate.examples"
 
     static func load(account: String) throws -> Data? {
         let query: [CFString: Any] = [

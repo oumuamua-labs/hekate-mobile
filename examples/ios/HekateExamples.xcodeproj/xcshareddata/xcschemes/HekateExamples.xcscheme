@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "5EC0DE000000000000000040"
-               BuildableName = "SignatureExample.app"
-               BlueprintName = "SignatureExample"
-               ReferencedContainer = "container:SignatureExample.xcodeproj">
+               BuildableName = "HekateExamples.app"
+               BlueprintName = "HekateExamples"
+               ReferencedContainer = "container:HekateExamples.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "5EC0DE000000000000000050"
-               BuildableName = "SignatureExampleUITests.xctest"
-               BlueprintName = "SignatureExampleUITests"
-               ReferencedContainer = "container:SignatureExample.xcodeproj">
+               BuildableName = "HekateExamplesUITests.xctest"
+               BlueprintName = "HekateExamplesUITests"
+               ReferencedContainer = "container:HekateExamples.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "5EC0DE000000000000000040"
-            BuildableName = "SignatureExample.app"
-            BlueprintName = "SignatureExample"
-            ReferencedContainer = "container:SignatureExample.xcodeproj">
+            BuildableName = "HekateExamples.app"
+            BlueprintName = "HekateExamples"
+            ReferencedContainer = "container:HekateExamples.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "5EC0DE000000000000000040"
-            BuildableName = "SignatureExample.app"
-            BlueprintName = "SignatureExample"
-            ReferencedContainer = "container:SignatureExample.xcodeproj">
+            BuildableName = "HekateExamples.app"
+            BlueprintName = "HekateExamples"
+            ReferencedContainer = "container:HekateExamples.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

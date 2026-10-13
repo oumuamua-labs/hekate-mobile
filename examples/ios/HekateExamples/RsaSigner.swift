@@ -25,7 +25,7 @@ enum RsaSignerError: LocalizedError {
 enum RsaSigner {
     static let modulusBytes = 256
 
-    private static let keyTag = Data("dev.oumuamua.hekate.examples.signatures.rsa-2048".utf8)
+    private static let keyTag = Data("dev.oumuamua.hekate.examples.rsa-2048".utf8)
     private static let publicExponent: [UInt8] = [0x01, 0x00, 0x01]
 
     static func loadOrCreateKey() throws -> SecKey {

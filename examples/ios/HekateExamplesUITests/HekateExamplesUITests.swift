@@ -4,7 +4,7 @@
 
 import XCTest
 
-final class SignatureExampleUITests: XCTestCase {
+final class HekateExamplesUITests: XCTestCase {
     func testRsaSignatureMadeOnDeviceProvesAndVerifies() {
         let app = XCUIApplication()
         app.launch()
@@ -25,6 +25,24 @@ final class SignatureExampleUITests: XCTestCase {
         }
 
         runAndExpectThreeVerifiedProofs(app, attachmentPrefix: "ml-dsa")
+    }
+
+    func testKeccakPreimageProvesAndVerifies() {
+        let app = XCUIApplication()
+        app.launch()
+
+        app.segmentedControls["statement"].buttons["Keccak-256"].tap()
+
+        runAndExpectThreeVerifiedProofs(app, attachmentPrefix: "keccak")
+    }
+
+    func testSha256PreimageProvesAndVerifies() {
+        let app = XCUIApplication()
+        app.launch()
+
+        app.segmentedControls["statement"].buttons["SHA-256"].tap()
+
+        runAndExpectThreeVerifiedProofs(app, attachmentPrefix: "sha256")
     }
 
     func testCancelStopsRunningProof() {

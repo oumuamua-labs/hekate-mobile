@@ -17,7 +17,7 @@
 			containerPortal = 5EC0DE000000000000000001;
 			proxyType = 1;
 			remoteGlobalIDString = 5EC0DE000000000000000040;
-			remoteInfo = SignatureExample;
+			remoteInfo = HekateExamples;
 		};
 
 		5EC0DE000000000000000044 = {
@@ -33,14 +33,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 
-		5EC0DE000000000000000020 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = signature_prover.swift; path = ../prover/target/swift/SignatureProver/signature_prover.swift; sourceTree = SOURCE_ROOT; };
-		5EC0DE000000000000000021 = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = SignatureProver.xcframework; path = ../prover/target/xcframeworks/SignatureProver.xcframework; sourceTree = SOURCE_ROOT; };
+		5EC0DE000000000000000020 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = example_prover.swift; path = ../prover/target/swift/ExampleProver/example_prover.swift; sourceTree = SOURCE_ROOT; };
+		5EC0DE000000000000000021 = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = ExampleProver.xcframework; path = ../prover/target/xcframeworks/ExampleProver.xcframework; sourceTree = SOURCE_ROOT; };
 		5EC0DE000000000000000022 = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = HekateProverCdylib.xcframework; path = ../prover/target/xcframeworks/HekateProverCdylib.xcframework; sourceTree = SOURCE_ROOT; };
-		5EC0DE000000000000000023 = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SignatureExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		5EC0DE000000000000000024 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SignatureExampleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5EC0DE000000000000000023 = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HekateExamples.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5EC0DE000000000000000024 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HekateExamplesUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 
-		5EC0DE000000000000000010 = {isa = PBXFileSystemSynchronizedRootGroup; path = SignatureExample; sourceTree = "<group>"; };
-		5EC0DE000000000000000011 = {isa = PBXFileSystemSynchronizedRootGroup; path = SignatureExampleUITests; sourceTree = "<group>"; };
+		5EC0DE000000000000000010 = {isa = PBXFileSystemSynchronizedRootGroup; path = HekateExamples; sourceTree = "<group>"; };
+		5EC0DE000000000000000011 = {isa = PBXFileSystemSynchronizedRootGroup; path = HekateExamplesUITests; sourceTree = "<group>"; };
 
 		5EC0DE000000000000000042 = {
 			isa = PBXFrameworksBuildPhase;
@@ -106,11 +106,11 @@
 			fileSystemSynchronizedGroups = (
 				5EC0DE000000000000000010,
 			);
-			name = SignatureExample;
+			name = HekateExamples;
 			packageProductDependencies = (
 				5EC0DE000000000000000071,
 			);
-			productName = SignatureExample;
+			productName = HekateExamples;
 			productReference = 5EC0DE000000000000000023;
 			productType = "com.apple.product-type.application";
 		};
@@ -130,8 +130,8 @@
 			fileSystemSynchronizedGroups = (
 				5EC0DE000000000000000011,
 			);
-			name = SignatureExampleUITests;
-			productName = SignatureExampleUITests;
+			name = HekateExamplesUITests;
+			productName = HekateExamplesUITests;
 			productReference = 5EC0DE000000000000000024;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
@@ -250,7 +250,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Hekate Signatures";
+				INFOPLIST_KEY_CFBundleDisplayName = "Hekate Examples";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -259,7 +259,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.oumuamua.hekate.examples.signatures;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.oumuamua.hekate.examples;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -270,7 +270,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Hekate Signatures";
+				INFOPLIST_KEY_CFBundleDisplayName = "Hekate Examples";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -279,7 +279,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.oumuamua.hekate.examples.signatures;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.oumuamua.hekate.examples;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -291,9 +291,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.oumuamua.hekate.examples.signatures.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.oumuamua.hekate.examples.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				TEST_TARGET_NAME = SignatureExample;
+				TEST_TARGET_NAME = HekateExamples;
 			};
 			name = Debug;
 		};
@@ -304,9 +304,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.oumuamua.hekate.examples.signatures.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.oumuamua.hekate.examples.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				TEST_TARGET_NAME = SignatureExample;
+				TEST_TARGET_NAME = HekateExamples;
 			};
 			name = Release;
 		};

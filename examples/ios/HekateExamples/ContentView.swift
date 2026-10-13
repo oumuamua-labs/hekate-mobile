@@ -23,6 +23,16 @@ struct ContentView: View {
                     Text(model.statement.claim)
                     LabeledContent("Public", value: model.statement.publicValues)
                     LabeledContent("Hidden", value: model.statement.hiddenValues)
+
+                    if !model.statement.inputSizes.isEmpty {
+                        Picker("Input", selection: $model.inputSize) {
+                            ForEach(model.statement.inputSizes) { size in
+                                Text(size.label).tag(Optional(size))
+                            }
+                        }
+                        .accessibilityIdentifier("input-size")
+                        .disabled(model.isRunning)
+                    }
                 }
 
                 Section {
@@ -39,7 +49,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .navigationTitle("Hekate signatures")
+            .navigationTitle("Hekate examples")
         }
     }
 
@@ -82,7 +92,7 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("unavailable")
         } else {
-            Button("Sign, prove and verify", action: model.start)
+            Button("Prove and verify", action: model.start)
                 .accessibilityIdentifier("run")
         }
     }
