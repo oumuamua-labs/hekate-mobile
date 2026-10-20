@@ -12,31 +12,30 @@ commands turn that crate into two xcframeworks and an `.aar` with the Hekate pro
 Swift and Kotlin guides: [oumuamua.dev/mobile](https://oumuamua.dev/mobile). The proof system:
 [Hekate](https://github.com/oumuamua-labs/hekate).
 
-> [!NOTE]  
-> Hekate's open code is AGPL-3.0-only; its signed prover binary shipped as free binaries for macOS (Apple Silicon),
+> [!IMPORTANT]  
+> Hekate's open code is AGPL-3.0-only; its signed prover ships as free binaries for macOS (Apple Silicon),
 > Linux (ARM64, glibc), iOS (ARM64, device and simulator), and Android (ARM64).
 > A product shipped under other terms, open source or closed, needs a commercial license.
 
 ---
 
-## Measured On iPhones
+## Benchmarks
 
 On-device proving, measured on real phones. These are proofs from the example apps with zero knowledge on:
 
 | Proof                                | Phone                         |  Prove | Verify |         Proof size | Peak memory |
 |:-------------------------------------|:------------------------------|-------:|-------:|-------------------:|------------:|
-| ML-DSA-65, key in the Secure Enclave | iPhone 14 Pro Max, iOS 26.7.1 | 1.34 s |  26 ms |          1,577 KiB |     156 MiB |
-| RSA-2048 PKCS#1 v1.5                 | iPhone 14 Pro Max, iOS 26.7.1 | 485 ms |  21 ms | 1,808 to 1,814 KiB |     252 MiB |
-| RSA-2048 PKCS#1 v1.5                 | iPhone 11 Pro Max, iOS 18.6.2 | 832 ms |  34 ms | 1,811 to 1,815 KiB |     187 MiB |
-| Keccak-256 of a 1 KiB message        | iPhone 14 Pro Max, iOS 26.7.1 |  59 ms | 5.3 ms |     353 to 357 KiB |      46 MiB |
-| Keccak-256 of a 174 KiB message      | iPhone 14 Pro Max, iOS 26.7.1 | 770 ms | 8.8 ms |     858 to 863 KiB |     120 MiB |
-| Keccak-256 of a 5.44 MiB message     | iPhone 14 Pro Max, iOS 26.7.1 | 26.7 s |  28 ms | 3,529 to 3,531 KiB |   1,852 MiB |
-| SHA-256 of a 1 KiB message           | iPhone 14 Pro Max, iOS 26.7.1 |  72 ms | 6.5 ms |     439 to 441 KiB |      56 MiB |
-| SHA-256 of a 127.9 KiB message       | iPhone 14 Pro Max, iOS 26.7.1 | 1.03 s |  10 ms |          1,034 KiB |     140 MiB |
+| ML-DSA-65, key in the Secure Enclave | iPhone 14 Pro Max, iOS 27.0.1 | 812 ms |  22 ms | 1,361 to 1,370 KiB |     153 MiB |
+| RSA-2048 PKCS#1 v1.5                 | iPhone 14 Pro Max, iOS 27.0.1 | 462 ms |  20 ms | 1,814 to 1,821 KiB |     258 MiB |
+| Keccak-256 of a 1 KiB message        | iPhone 14 Pro Max, iOS 27.0.1 |  57 ms | 5.2 ms |     358 to 360 KiB |      47 MiB |
+| Keccak-256 of a 174 KiB message      | iPhone 14 Pro Max, iOS 27.0.1 | 626 ms | 8.7 ms |     868 to 870 KiB |     122 MiB |
+| Keccak-256 of a 5.44 MiB message     | iPhone 14 Pro Max, iOS 27.0.1 | 20.8 s |  23 ms | 3,532 to 3,535 KiB |   1,976 MiB |
+| SHA-256 of a 1 KiB message           | iPhone 14 Pro Max, iOS 27.0.1 |  68 ms | 6.3 ms |     446 to 447 KiB |      55 MiB |
+| SHA-256 of a 127.9 KiB message       | iPhone 14 Pro Max, iOS 27.0.1 | 949 ms |  11 ms | 1,039 to 1,046 KiB |     142 MiB |
 
-Each figure is the best of three proofs with the signed `ct` prover 0.15.0 and hekate 0.37.0, on battery except
-the SHA-256 rows, which ran on the charger. The apps in [examples/](examples/README.md) reported these numbers.
-That README says what each row of the report means and how to run the apps on your own phone.
+Each figure is the best of three proofs with the signed `ct` prover 0.16.1 (`hekate-prover-sys` 0.38.1) and hekate
+0.38.0, on battery. The apps in [examples/](examples/README.md) reported these numbers. That README says what each
+row of the report means and how to run the apps on your own phone.
 
 ---
 
