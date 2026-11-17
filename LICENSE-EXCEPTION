@@ -5,7 +5,7 @@ License, version 3.
 
   The copyright holders of Hekate Mobile grant you permission to combine
 Hekate Mobile with the Hekate prover shared library
-(libhekate_prover_cdylib) distributed in binary form by Oumuamua Labs,
+(libhekate_prover) distributed in binary form by Oumuamua Labs,
 and to convey the resulting combined work under terms of your choice,
 provided that you comply with the GNU Affero General Public License,
 version 3, in all respects for Hekate Mobile and for every other portion
