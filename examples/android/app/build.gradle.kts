@@ -49,7 +49,7 @@ android {
 }
 
 dependencies {
-    implementation("dev.oumuamua.hekate:hekate:0.3.0")
+    implementation("dev.oumuamua.hekate:hekate:0.4.0")
     implementation(files("../../prover/target/aar/example-prover-release.aar"))
     implementation("net.java.dev.jna:jna:5.19.1@aar")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")

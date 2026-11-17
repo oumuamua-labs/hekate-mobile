@@ -17,7 +17,7 @@ reaches the Rust prover. Requires iOS 16 or macOS 13.
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/oumuamua-labs/hekate-mobile.git", from: "0.3.0"),
+    .package(url: "https://github.com/oumuamua-labs/hekate-mobile.git", from: "0.4.0"),
 ],
 targets: [
     .target(

@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "dev.oumuamua.hekate"
-version = "0.3.0"
+version = "0.4.0"
 
 kotlin {
     jvmToolchain(17)
