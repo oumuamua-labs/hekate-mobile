@@ -7,14 +7,14 @@ use hekate_core::proofs::InnerProof;
 use hekate_core::trace::TraceBuilder;
 use hekate_crypto::DefaultHasher;
 use hekate_crypto::transcript::Transcript;
-use hekate_math::{Bit, Block32, Block128, TowerField};
+use hekate_math::{Bit, Block32, Block256, TowerField};
 use hekate_program::circuit::{Circuit, CircuitProgram};
 use hekate_program::digest::program_id;
 use hekate_program::{FixedShape, ProgramInstance, ProgramWitness, define_columns};
 use hekate_verifier::HekateVerifier;
 use std::process::ExitCode;
 
-type F = Block128;
+type F = Block256;
 type H = DefaultHasher;
 
 const TRANSCRIPT_LABEL: &[u8] = b"hekate-mobile-determinism-v1";
@@ -77,7 +77,7 @@ fn verify(air: &CircuitProgram<F>, proof: &InnerProof<F>) -> Result<(), String> 
     let id = program_id::<F, _>(air).map_err(|e| format!("program id: {e}"))?;
     let mut transcript = Transcript::<H>::new(TRANSCRIPT_LABEL);
 
-    let accepted = HekateVerifier::<F, H>::verify(
+    HekateVerifier::<F, H>::verify(
         &id,
         air,
         &instance(),
@@ -85,12 +85,7 @@ fn verify(air: &CircuitProgram<F>, proof: &InnerProof<F>) -> Result<(), String> 
         &mut transcript,
         &Config::default(),
     )
-    .map_err(|e| format!("verify: {e}"))?;
-
-    match accepted {
-        true => Ok(()),
-        false => Err(String::from("verifier rejected the proof")),
-    }
+    .map_err(|e| format!("verify: {e}"))
 }
 
 fn prove_to(out_path: &str) -> Result<(), String> {

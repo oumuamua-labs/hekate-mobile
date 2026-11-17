@@ -69,15 +69,15 @@ jobs:
         run: |
           set -euxo pipefail
           BIN=target/aarch64-apple-ios-sim/release/determinism-harness
-          CDYLIB=$(find target/aarch64-apple-ios-sim/release/build -name 'libhekate_prover_cdylib.dylib' | head -1)
+          CDYLIB=$(find target/aarch64-apple-ios-sim/release/build -name 'libhekate_prover.dylib' | head -1)
           STAGE=stage-ios
           rm -rf "$STAGE" && mkdir -p "$STAGE"
           cp "$BIN" "$STAGE/"
           cp "$CDYLIB" "$STAGE/"
-          OLD_REF=$(otool -L "$STAGE/determinism-harness" | grep libhekate_prover_cdylib | awk '{print $1}')
-          install_name_tool -change "$OLD_REF" "@executable_path/libhekate_prover_cdylib.dylib" "$STAGE/determinism-harness"
-          install_name_tool -id   "@executable_path/libhekate_prover_cdylib.dylib" "$STAGE/libhekate_prover_cdylib.dylib"
-          codesign -s - "$STAGE/libhekate_prover_cdylib.dylib"
+          OLD_REF=$(otool -L "$STAGE/determinism-harness" | grep libhekate_prover | awk '{print $1}')
+          install_name_tool -change "$OLD_REF" "@executable_path/libhekate_prover.dylib" "$STAGE/determinism-harness"
+          install_name_tool -id   "@executable_path/libhekate_prover.dylib" "$STAGE/libhekate_prover.dylib"
+          codesign -s - "$STAGE/libhekate_prover.dylib"
           codesign -s - "$STAGE/determinism-harness"
 
       - name: Boot iOS simulator
@@ -140,7 +140,7 @@ jobs:
         run: |
           set -euxo pipefail
           BIN=target/aarch64-linux-android/release/determinism-harness
-          CDYLIB=$(find target/aarch64-linux-android/release/build -name 'libhekate_prover_cdylib.so' | head -1)
+          CDYLIB=$(find target/aarch64-linux-android/release/build -name 'libhekate_prover.so' | head -1)
           STAGE=stage-android
           rm -rf "$STAGE" && mkdir -p "$STAGE"
           cp "$BIN" "$STAGE/"
@@ -209,7 +209,7 @@ jobs:
         working-directory: ${{ env.HARNESS_DIR }}
         run: |
           set -euo pipefail
-          CDYLIB=$(find target/release/build -name 'libhekate_prover_cdylib.so' | head -1)
+          CDYLIB=$(find target/release/build -name 'libhekate_prover.so' | head -1)
           if [ -z "$CDYLIB" ]; then
             echo "::error::prover cdylib not found under target/release/build"
             exit 1
