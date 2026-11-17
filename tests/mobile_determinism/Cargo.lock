@@ -361,6 +361,8 @@ dependencies = [
 [[package]]
 name = "hekate-core"
 version = "0.39.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82134f94ffac6cf70642c28bb86b9cbf89d30243bf2ff939ab2d9d12d8c53ffb"
 dependencies = [
  "hekate-crypto",
  "hekate-math",
@@ -373,6 +375,8 @@ dependencies = [
 [[package]]
 name = "hekate-crypto"
 version = "0.39.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d65fd5550ca031c0ab9251430d2b27fadccd3cf465e3e7f9d65c25a4774be791"
 dependencies = [
  "blake3",
  "hekate-math",
@@ -394,6 +398,8 @@ dependencies = [
 [[package]]
 name = "hekate-program"
 version = "0.39.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "203a6ad99d6e853fbcccae917c355b075d2384a9c693c5a1f29a3447ee681d9c"
 dependencies = [
  "hashbrown",
  "hekate-core",
@@ -404,6 +410,8 @@ dependencies = [
 [[package]]
 name = "hekate-prover-sys"
 version = "0.39.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7945f763e66ae55ec7967ea076e0b23b94a4648183da491c393a3d9a4213664"
 dependencies = [
  "base64",
  "ed25519-dalek",
@@ -425,6 +433,8 @@ dependencies = [
 [[package]]
 name = "hekate-sdk"
 version = "0.39.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "482b538f9f474fcc10d4553ea14d567160c94f567a8d8d3acb74257615c9042b"
 dependencies = [
  "flatbuffers",
  "hashbrown",
@@ -439,6 +449,8 @@ dependencies = [
 [[package]]
 name = "hekate-verifier"
 version = "0.39.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edab196791e88d8e628dbdcdce1b9c2879ea20108925cc5d2c343cb91b16d4d2"
 dependencies = [
  "hekate-core",
  "hekate-crypto",
@@ -1101,27 +1113,3 @@ dependencies = [
  "quote",
  "syn",
 ]
-
-[[patch.unused]]
-name = "hekate-aes"
-version = "0.12.0"
-
-[[patch.unused]]
-name = "hekate-gadgets"
-version = "0.39.0"
-
-[[patch.unused]]
-name = "hekate-keccak"
-version = "0.12.0"
-
-[[patch.unused]]
-name = "hekate-pqc"
-version = "0.13.0"
-
-[[patch.unused]]
-name = "hekate-rsa"
-version = "0.5.0"
-
-[[patch.unused]]
-name = "hekate-sha2"
-version = "0.5.0"
