@@ -5,7 +5,7 @@ use std::time::SystemTime;
 
 const SLICES: [&str; 2] = ["aarch64-apple-ios", "aarch64-apple-ios-sim"];
 const PROVER_FRAMEWORK: &str = "HekateProverCdylib";
-const PROVER_DYLIB_STEM: &str = "libhekate_prover_cdylib";
+const PROVER_DYLIB_STEM: &str = "libhekate_prover";
 
 struct BuildInfo {
     pkg_name: String,
@@ -254,6 +254,14 @@ fn read_build_info(workspace: &Path) -> Result<BuildInfo, String> {
         .map(str::to_string)
         .unwrap_or_else(|| pkg_name.replace('-', "_"));
 
+    if format!("lib{lib_name}") == PROVER_DYLIB_STEM {
+        return Err(format!(
+            "[lib] name `{lib_name}` is the Hekate prover's own library name; \
+             set another [lib] name or package name in {}",
+            manifest.display()
+        ));
+    }
+
     let prover_version = parse_prover_version(&parsed)?;
 
     Ok(BuildInfo {
@@ -387,22 +395,23 @@ fn read_prover_load_dylib(dev_dylib: &Path) -> Result<String, String> {
     }
 
     let text = String::from_utf8_lossy(&out.stdout);
-    for line in text.lines() {
-        let trimmed = line.trim();
-        if trimmed.contains(PROVER_DYLIB_STEM) {
-            let path = trimmed
-                .split_whitespace()
-                .next()
-                .ok_or_else(|| format!("could not split otool line: {trimmed}"))?;
 
-            return Ok(path.to_string());
-        }
+    match prover_load_command(&text) {
+        Some(path) => Ok(path.to_string()),
+        None => Err(format!(
+            "{PROVER_DYLIB_STEM}.dylib not referenced in {}",
+            dev_dylib.display()
+        )),
     }
+}
 
-    Err(format!(
-        "{PROVER_DYLIB_STEM} not referenced in {}",
-        dev_dylib.display()
-    ))
+fn prover_load_command(otool_text: &str) -> Option<&str> {
+    let wanted = format!("{PROVER_DYLIB_STEM}.dylib");
+
+    otool_text
+        .lines()
+        .filter_map(|line| line.split_whitespace().next())
+        .find(|path| path.rsplit('/').next() == Some(wanted.as_str()))
 }
 
 fn wrap_framework(
@@ -660,4 +669,37 @@ fn codesign(xcframework: &Path, identity: &str) -> Result<(), String> {
 fn fail(msg: &str) -> ExitCode {
     eprintln!("[fail] {msg}");
     ExitCode::from(1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const OTOOL_PREFIX_NAMED_CRATE: &str = concat!(
+        "/w/app/target/aarch64-apple-ios/release/libhekate_prover_demo.dylib:\n",
+        "\t/w/app/target/aarch64-apple-ios/release/deps/libhekate_prover_demo.dylib ",
+        "(compatibility version 0.0.0, current version 0.0.0)\n",
+        "\t/usr/lib/libiconv.2.dylib (compatibility version 7.0.0, current version 7.0.0)\n",
+        "\t@rpath/libhekate_prover.dylib (compatibility version 0.0.0, current version 0.0.0)\n",
+        "\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1359.0.0)\n",
+    );
+
+    #[test]
+    fn load_command_is_found_past_header_and_own_id() {
+        assert_eq!(
+            prover_load_command(OTOOL_PREFIX_NAMED_CRATE),
+            Some("@rpath/libhekate_prover.dylib")
+        );
+    }
+
+    #[test]
+    fn header_and_own_id_alone_are_not_the_load_command() {
+        let unlinked: String = OTOOL_PREFIX_NAMED_CRATE
+            .lines()
+            .filter(|line| !line.contains("@rpath/"))
+            .map(|line| format!("{line}\n"))
+            .collect();
+
+        assert_eq!(prover_load_command(&unlinked), None);
+    }
 }

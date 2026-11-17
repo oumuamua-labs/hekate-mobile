@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 use std::time::SystemTime;
 
-const PROVER_DYLIB_STEM: &str = "libhekate_prover_cdylib";
-const PROVER_LIB_NAME: &str = "hekate_prover_cdylib";
+const PROVER_DYLIB_STEM: &str = "libhekate_prover";
+const PROVER_LIB_NAME: &str = "hekate_prover";
 
 const ANDROID_ABIS: &[(&str, &str)] = &[("arm64-v8a", "aarch64-linux-android")];
 
@@ -12,7 +12,7 @@ const ANDROID_ABIS: &[(&str, &str)] = &[("arm64-v8a", "aarch64-linux-android")];
 // in Cargo.toml, regenerate sample output and update this literal.
 const KOTLIN_INJECTION_ANCHOR: &str = "internal object IntegrityCheckingUniffiLib {\n    init {\n        Native.register(IntegrityCheckingUniffiLib::class.java";
 
-const KOTLIN_INJECTION_REPLACEMENT: &str = "internal object IntegrityCheckingUniffiLib {\n    init {\n        System.loadLibrary(\"hekate_prover_cdylib\")\n        Native.register(IntegrityCheckingUniffiLib::class.java";
+const KOTLIN_INJECTION_REPLACEMENT: &str = "internal object IntegrityCheckingUniffiLib {\n    init {\n        System.loadLibrary(\"hekate_prover\")\n        Native.register(IntegrityCheckingUniffiLib::class.java";
 
 struct BuildInfo {
     pkg_name: String,
@@ -223,6 +223,14 @@ fn read_build_info(workspace: &Path) -> Result<BuildInfo, String> {
         .and_then(|n| n.as_str())
         .map(str::to_string)
         .unwrap_or_else(|| pkg_name.replace('-', "_"));
+
+    if format!("lib{lib_name}") == PROVER_DYLIB_STEM {
+        return Err(format!(
+            "[lib] name `{lib_name}` is the Hekate prover's own library name; \
+             set another [lib] name or package name in {}",
+            manifest.display()
+        ));
+    }
 
     Ok(BuildInfo { pkg_name, lib_name })
 }
@@ -489,7 +497,7 @@ private fun findLibraryName(componentName: String): String {
 
 internal object IntegrityCheckingUniffiLib {
     init {
-        System.loadLibrary("hekate_prover_cdylib")
+        System.loadLibrary("hekate_prover")
         Native.register(IntegrityCheckingUniffiLib::class.java, findLibraryName(componentName = "my_prover_test"))
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
