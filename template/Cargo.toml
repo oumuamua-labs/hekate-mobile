@@ -17,11 +17,11 @@ name = "uniffi-bindgen"
 path = "src/bin/uniffi-bindgen.rs"
 
 [dependencies]
-hekate-prover-sys = { version = "=0.38.1", features = ["{{prover_mode}}"] }
-hekate-math = "=0.12.1"
-hekate-core = "=0.38.0"
-hekate-program = "=0.38.0"
-hekate-sdk = "=0.38.0"
+hekate-prover-sys = { version = "=0.39.0", features = ["{{prover_mode}}"] }
+hekate-math = "=0.13.0"
+hekate-core = "=0.39.0"
+hekate-program = "=0.39.0"
+hekate-sdk = "=0.39.0"
 uniffi = { version = "=0.32.2", features = ["cli"] }
 thiserror = "2"
 getrandom = "0.4"

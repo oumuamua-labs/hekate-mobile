@@ -4,23 +4,22 @@
 
 use hekate_core::errors;
 use hekate_core::trace::TraceBuilder;
-use hekate_math::{Bit, Block128, Block32, TowerField};
+use hekate_math::{Bit, Block32, Block256, TowerField};
 use hekate_program::circuit::{Circuit, CircuitProgram};
 use hekate_program::define_columns;
 use hekate_program::{FixedShape, ProgramInstance, ProgramWitness};
 
-use crate::inputs::MyInputs;
 use crate::ProveError;
+use crate::inputs::MyInputs;
 
 pub const TRANSCRIPT_LABEL: &[u8] = b"my-prover-v1";
 
-/// Production `Config` rejects a table too short
-/// to hide its LDT openings. Any layout is safe
-/// at `Config::min_table_rows()` rows and above.
+/// Production `Config` sets no row floor: the
+/// commitment hides its openings at every height.
 const NUM_VARS: usize = 12;
 const NUM_ROWS: usize = 1 << NUM_VARS;
 
-type F = Block128;
+type F = Block256;
 
 define_columns! {
     Cols {

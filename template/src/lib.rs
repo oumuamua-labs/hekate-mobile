@@ -5,7 +5,7 @@ use hekate_core::config::Config;
 use hekate_program::digest::program_id_hex;
 use hekate_prover_sys::{CancelToken as ProverCancelToken, Error as ProverError, ErrorCode};
 use std::any::Any;
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::Arc;
 use thiserror::Error;
 
