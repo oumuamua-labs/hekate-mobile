@@ -10,7 +10,7 @@ mod sha256;
 use hekate_core::config::Config;
 use hekate_crypto::DefaultHasher;
 use hekate_crypto::transcript::Transcript;
-use hekate_math::Block128;
+use hekate_math::Block256;
 use hekate_program::digest::program_id_hex;
 use hekate_program::{Program, ProgramInstance, ProgramWitness};
 use hekate_prover_sys::{CancelToken as ProverCancelToken, Error as ProverError, ErrorCode};
@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 use thiserror::Error;
 use zeroize::Zeroizing;
 
-type F = Block128;
+type F = Block256;
 type H = DefaultHasher;
 
 const MIN_NUM_VARS: usize = 8;
@@ -205,10 +205,7 @@ fn run_verifier<P: Program<F> + Sync>(
     let verify_time = verify_start.elapsed();
 
     match verdict {
-        Ok(true) => Ok(verify_time),
-        Ok(false) => Err(VerifyError::Rejected(String::from(
-            "the verifier returned false",
-        ))),
+        Ok(()) => Ok(verify_time),
         Err(e) => Err(VerifyError::Rejected(e.to_string())),
     }
 }

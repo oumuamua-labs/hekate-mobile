@@ -641,9 +641,7 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
 name = "hekate-core"
-version = "0.38.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3ce15610d24400a55b6e195a8a6a961e875f191462b7ebfd0ebb011cd8a0cad"
+version = "0.39.0"
 dependencies = [
  "hekate-crypto",
  "hekate-math",
@@ -655,9 +653,7 @@ dependencies = [
 
 [[package]]
 name = "hekate-crypto"
-version = "0.38.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28f60bde3f6d2bd449577c12141b3b50f0f34f7d1dfe958d0da4ba421701afc2"
+version = "0.39.0"
 dependencies = [
  "blake3",
  "hekate-math",
@@ -667,9 +663,7 @@ dependencies = [
 
 [[package]]
 name = "hekate-gadgets"
-version = "0.38.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4691402a7861040337ec0259884504bc53ca497c10aad52b3bffb8d15b9a1a27"
+version = "0.39.0"
 dependencies = [
  "hekate-core",
  "hekate-math",
@@ -682,9 +676,7 @@ dependencies = [
 
 [[package]]
 name = "hekate-keccak"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ef71057708424b016081a65cee0a26792bd0d08ae662652d3a175a4937f8e2b"
+version = "0.12.0"
 dependencies = [
  "hekate-core",
  "hekate-math",
@@ -695,9 +687,9 @@ dependencies = [
 
 [[package]]
 name = "hekate-math"
-version = "0.12.1"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e2781efc292f30511d5e2fa1210ef49f9688d4ad5b7bf7032fb285f3ba8d775"
+checksum = "41d7364594b9aa3cc5fc67429c71bea7ea20828ca7164b1c5bf72170fcb4aa38"
 dependencies = [
  "rayon",
  "serde",
@@ -706,9 +698,7 @@ dependencies = [
 
 [[package]]
 name = "hekate-pqc"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f90d1ccc8e6de31883421fb8f930cbd4228ad3d4de6b575b1979874176ffbc7a"
+version = "0.13.0"
 dependencies = [
  "hekate-core",
  "hekate-gadgets",
@@ -721,9 +711,7 @@ dependencies = [
 
 [[package]]
 name = "hekate-program"
-version = "0.38.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "638118541751177a2f0a6144779a0265cd16eb2e40b0bda19a4624dbe3f0b4ea"
+version = "0.39.0"
 dependencies = [
  "hashbrown",
  "hekate-core",
@@ -733,9 +721,7 @@ dependencies = [
 
 [[package]]
 name = "hekate-prover-sys"
-version = "0.38.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a927076b268764a3ae75d054960d0a3fa99ecdde860361eda0e393f6fc863025"
+version = "0.39.0"
 dependencies = [
  "base64 0.22.1",
  "ed25519-dalek",
@@ -756,9 +742,7 @@ dependencies = [
 
 [[package]]
 name = "hekate-rsa"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1d754765763231cfb0c78b3487748a4f587d8a1d24f81081723446bd68733d1"
+version = "0.5.0"
 dependencies = [
  "hekate-core",
  "hekate-gadgets",
@@ -770,9 +754,7 @@ dependencies = [
 
 [[package]]
 name = "hekate-sdk"
-version = "0.38.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "538e6d041a5adbb55130344b93e02a500a6415d3952c08e09baf11c2a5b07c79"
+version = "0.39.0"
 dependencies = [
  "flatbuffers",
  "hashbrown",
@@ -786,9 +768,7 @@ dependencies = [
 
 [[package]]
 name = "hekate-sha2"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db2437374d4d78d533d6cf62a9f601227fed56665dcd9466d5d77029bc0c2668"
+version = "0.5.0"
 dependencies = [
  "hekate-core",
  "hekate-math",
@@ -798,9 +778,7 @@ dependencies = [
 
 [[package]]
 name = "hekate-verifier"
-version = "0.38.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cbe72ef8de80f709d856749a172425974b5f8254af02613f7e4d9d1dcad50acd"
+version = "0.39.0"
 dependencies = [
  "hekate-core",
  "hekate-crypto",
@@ -1829,3 +1807,7 @@ name = "zmij"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
+
+[[patch.unused]]
+name = "hekate-aes"
+version = "0.12.0"
